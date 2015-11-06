@@ -1,9 +1,11 @@
 require 'torch'
 
+dofile('../torch-libs/liuflow/init.lua')
+
 Tracker = {}
 
-function Tracker:new(detections_by_frame, detection_scores)
-	newObj = {detectionsByFrame=detections_by_frame , detectionScores=detection_scores}
+function Tracker:new(detections_by_frame, detection_scores, video_frames)
+	newObj = {detectionsByFrame=detections_by_frame , detectionScores=detection_scores, videoFrames=video_frames}
 	self.__index = self
 	return setmetatable(newObj, self)
 end
