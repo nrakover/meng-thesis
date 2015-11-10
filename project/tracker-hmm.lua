@@ -1,7 +1,5 @@
 require 'torch'
 
-dofile('../torch-libs/liuflow/init.lua')
-
 Tracker = {}
 
 function Tracker:new(detections_by_frame, detection_scores, detection_avg_flow)
