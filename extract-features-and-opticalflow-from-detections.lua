@@ -47,10 +47,13 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	for frameIndx = 1,detectionsByFrame.detections:size(1) do
 		local frameDetections = detectionsByFrame.detections[frameIndx]
 		local frame = vid:forward():clone()
+		local flow_norm, flow_angle, warp, fx, fy = nil
 
 		featuresByFrame[frameIndx] = {}
 		if frameIndx ~= 1 then
 			opticalflowByFrame[frameIndx] = {}
+
+			flow_norm, flow_angle, warp, fx, fy = liuflow.infer({prevFrame, frame})
 			print('OptFlow')
 		end
 		
@@ -73,8 +76,6 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 
 			-- Compute optical flow
 			if frameIndx ~= 1 then
-				local flow_norm, flow_angle, warp, fx, fy = liuflow.infer({prevFrame, frame})
-
 				local region_fx = image.crop(fx, x_min, y_min, x_max, y_max)
 				local region_fy = image.crop(fy, x_min, y_min, x_max, y_max)
 
