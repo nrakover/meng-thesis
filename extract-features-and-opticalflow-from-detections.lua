@@ -37,7 +37,12 @@ local net = loadcaffe.load('networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', 
 function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	local w = detectionsByFrame.width[1][1]
 	local h = detectionsByFrame.height[1][1]
-	local vid = ffmpeg.Video{path=video_filepath, height=h, width=w, delete=false}
+	local frameRate = detectionsByFrame.fps[1][1]
+	local duration = detectionsByFrame.length[1][1]
+	local vid = ffmpeg.Video{path=video_filepath, height=h, width=w, fps=frameRate, length=duration}
+
+	local videoFrames = vid:totensor(1,1,detectionsByFrame.detections:size(1))
+	print('Num frames: '..detectionsByFrame.detections:size(1))
 
 	local featuresByFrame = {}
 	local opticalflowByFrame = {}
@@ -46,15 +51,13 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	-- Iterate over frames
 	for frameIndx = 1,detectionsByFrame.detections:size(1) do
 		local frameDetections = detectionsByFrame.detections[frameIndx]
-		local frame = vid:forward():clone()
-		local flow_norm, flow_angle, warp, fx, fy = nil
+		local frame = videoFrames[frameIndx]
 
 		featuresByFrame[frameIndx] = {}
 		if frameIndx ~= 1 then
-			opticalflowByFrame[frameIndx] = {}
+			local flow_norm, flow_angle, warp, fx, fy = liuflow.infer({prevFrame, frame})
 
-			flow_norm, flow_angle, warp, fx, fy = liuflow.infer({prevFrame, frame})
-			print('OptFlow')
+			opticalflowByFrame[frameIndx] = {flow_x=fx:clone(), flow_y=fy:clone()}
 		end
 		
 		-- Iterate over detections
@@ -74,14 +77,6 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 			local frame_region_features = extractFeatures(frame_region, net)
 			featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
 
-			-- Compute optical flow
-			if frameIndx ~= 1 then
-				local region_fx = image.crop(fx, x_min, y_min, x_max, y_max)
-				local region_fy = image.crop(fy, x_min, y_min, x_max, y_max)
-
-				opticalflowByFrame[frameIndx][detIndx] = {flow_x=region_fx:clone(), flow_y=region_fy:clone()}
-			end
-		end
 		prevFrame = frame:clone()
 
 		print(100 * frameIndx / detectionsByFrame.detections:size(1))
@@ -92,10 +87,10 @@ end
 
 
 -- Run on test data
-local detectionsByFrame = matio.load('project/test/nico_walking.mat' , 'detections_by_frame')
-local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'project/test/nico_walking.mp4')
+local detectionsByFrame = matio.load('project/test/nico_walking_short.mat' , 'detections_by_frame')
+local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'project/test/nico_walking_short.avi')
 
-torch.save('project/test/nico_walking_features.t7', features)
-torch.save('project/test/nico_walking_opticalflow.t7', opticalflow)
+torch.save('project/test/nico_walking_short_features.t7', features)
+torch.save('project/test/nico_walking_short_opticalflow.t7', opticalflow)
 
 
