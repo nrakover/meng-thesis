@@ -29,22 +29,30 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 	return newObj
 end
 
-function SentenceTracker:getBestTrack()
-	-- TODO
+function SentenceTracker:getBestPath()
 	self:setPIMemoTable()
 
+	local numFrames = #self.detectionsByFrame
+	local possibleEndStates = self:possibleStates(numFrames)
+	local bestScore = nil
+	local bestPath = nil
+	for i,v in ipairs(possibleEndStates) do
+		local piResult = self:PI(numFrames, v)
+		if bestScore == nil or piResult.score > bestScore then
+			bestScore = piResult.score
+			bestPath = piResult.path
+		end
+	end
+	return bestPath, bestScore
 end
 
 local function SentenceTracker:PI(k, v)
 	-- Use this to index into memo table
-	local stateKey = {}
-	for i = 1, #v do
-		table.insert(stateKey, {v[i]})
-	end
+	local key = getKey(k,v)
 
 	-- Check if value is memoized
-	if self.piMemo[k][stateKey] ~= 1 then
-		return self.piMemo[k][stateKey]
+	if self.piMemo[key] ~= nil then
+		return self.piMemo[key]
 	end
 
 
@@ -107,27 +115,27 @@ local function SentenceTracker:PI(k, v)
 		table.insert(bestPath, bestPathPrefix[p])
 	end
 	table.insert(bestPath, v)
-	local result = {score=scoreToReturn, path=bestPath}		-- NEED TO ADD SUPPORT FOR THIS
+	local result = {score=scoreToReturn, path=bestPath}
 
 	-- Memoize
-	self.piMemo[k][stateKey] = scoreToReturn
+	self.piMemo[key] = result
 
-	return scoreToReturn
+	return result
 end
 
 local function SentenceTracker:setPIMemoTable()
 	self.piMemo = {}
-	for t = 1, #self.detectionsByFrame do
-		local dimsTable = {}
-		for r = 1, #self.roles do
-			table.insert(dimsTable, self.detectionsByFrame[t]:size(1))
-		end
-		for w = 1, #self.words do
-			table.insert(dimsTable, self.words[w].stateTransitions:size(1))
-		end
+	-- for t = 1, #self.detectionsByFrame do
+	-- 	local dimsTable = {}
+	-- 	for r = 1, #self.roles do
+	-- 		table.insert(dimsTable, self.detectionsByFrame[t]:size(1))
+	-- 	end
+	-- 	for w = 1, #self.words do
+	-- 		table.insert(dimsTable, self.words[w].stateTransitions:size(1))
+	-- 	end
 
-		table.insert(self.piMemo, torch.ones(torch.LongStorage(dimsTable)))
-	end
+	-- 	table.insert(self.piMemo, torch.ones(torch.LongStorage(dimsTable)))
+	-- end
 end
 
 local function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path)
@@ -227,6 +235,13 @@ local function SentenceTracker:getWordToStateAssignments(numWords)
 	return assignments
 end
 
+local function getKey(k, v)
+	local key = (''..k)..':'
+	for i = 1, #v do
+		key = (key..v[i])..'_'
+	end
+	return key
+end
 
 
 
