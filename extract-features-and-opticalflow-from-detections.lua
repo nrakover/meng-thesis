@@ -76,6 +76,7 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 			-- Compute features
 			local frame_region_features = extractFeatures(frame_region, net)
 			featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
+		end
 
 		prevFrame = frame:clone()
 
