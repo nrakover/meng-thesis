@@ -14,7 +14,7 @@ end
 
 function Tracker:detectionStrength(frameIndx, detectionIndx)
 	-- TODO: consider better metric
-	return 1/self.detectionsByFrame[frameIndx]:size(1)
+	return math.log(1/self.detectionsByFrame[frameIndx]:size(1))
 end
 
 function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
