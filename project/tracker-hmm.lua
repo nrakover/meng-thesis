@@ -4,7 +4,7 @@ require 'image'
 Tracker = {}
 
 function Tracker:new(detections_by_frame, detections_optical_flow)
-	newObj = {detectionsByFrame=detections_by_frame, detectionsOptFlow=detections_optical_flow}
+	local newObj = {detectionsByFrame=detections_by_frame, detectionsOptFlow=detections_optical_flow}
 	self.__index = self
 	setmetatable(newObj, self)
 
@@ -69,9 +69,9 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	return d
 end
 
-local function Tracker:setMemoTables()
+function Tracker:setMemoTables()
 	self.memo = {}
-	for t = 2,#self.detectionsByFrame do
+	for t = 2, self.detectionsByFrame:size(1) do
 		table.insert( self.memo, -torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1)) )
 	end
 end

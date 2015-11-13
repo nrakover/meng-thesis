@@ -1,12 +1,12 @@
 require 'torch'
 require 'svm'
 
-dofile('../data-to-svmlight.lua' );
+dofile('/afs/csail.mit.edu/u/n/nrakover/meng/data-to-svmlight.lua');
 
 Word = {}
 
 function Word:new(emission_models, state_transitions, state_priors, detections_by_frame, detection_features)
-	newObj = {emissionModels=emission_models, stateTransitions=state_transitions, statePriors=state_priors, detectionsByFrame=detections_by_frame, detectionFeatures=detection_features}
+	local newObj = {emissionModels=emission_models, stateTransitions=state_transitions, statePriors=state_priors, detectionsByFrame=detections_by_frame, detectionFeatures=detection_features}
 	self.__index = self
 	setmetatable(newObj, self)
 
@@ -22,7 +22,7 @@ function Word:probOfEmission(state, frameIndx, detectionIndx)
 
 	-- else compute value
 	local features_for_frame_detections = self.detectionFeatures[frameIndx]
-	local formatted_features = t7ToSvmlight(features_for_frame_detections, torch.ones(features_for_frame_detections:size(1)))
+	local formatted_features = t7ToSvmlight(features_for_frame_detections, torch.ones(#features_for_frame_detections))
 
 	local labels,accuracy,prob = liblinear.predict(formatted_features, self.emissionModels[state], '-b 1 -q')
 	
@@ -41,14 +41,14 @@ function Word:probOfTransition(prevState, newState)
 end
 
 function Word:statePrior(state)
-	return self.statePriors[state]
+	return self.statePriors[state][1]
 end
 
-local function Word:setMemoTables()
+function Word:setMemoTables()
 	self.memo = {}
 	local nStates = self.stateTransitions:size(1)
-	for t = 1,#self.detectionsByFrame do
-		table.insert(self.memo, -torch.ones(nStates, #self.detectionsByFrame[t]))
+	for t = 1, self.detectionsByFrame:size(1) do
+		table.insert(self.memo, -torch.ones(nStates, self.detectionsByFrame[t]:size(1)))
 	end
 end
 

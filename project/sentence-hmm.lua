@@ -3,16 +3,16 @@ require 'torch'
 local matio = require 'matio'
 matio.use_lua_strings = true
 
-dofile('tracker-hmm.lua')
-dofile('word-hmm.lua')
+dofile('/afs/csail.mit.edu/u/n/nrakover/meng/project/tracker-hmm.lua')
+dofile('/afs/csail.mit.edu/u/n/nrakover/meng/project/word-hmm.lua')
 
 
 SentenceTracker = {}
 
 function SentenceTracker:new(sentence, video_detections_path, video_features_path, video_optflow_path, word_models)
-	newObj = {}
+	local newObj = {}
 	self.__index = self
-	setmetatable(newObj, self)
+	newObj = setmetatable(newObj, self)
 
 	-- Process video
 	newObj:processVideo(video_detections_path, video_features_path, video_optflow_path)
@@ -29,15 +29,29 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 	return newObj
 end
 
+function SentenceTracker:getBestTrack()
+	local path = self:getBestPath()
+
+	-- TODO: generalize to more that one word
+	local track = {}
+	for frameIndx = 1, #path do
+		local state = path[frameIndx]
+		local detIndx = state[1]
+		track[frameIndx] = self.detectionsByFrame[frameIndx][detIndx]:clone()
+	end
+	return track
+end
+
 function SentenceTracker:getBestPath()
 	self:setPIMemoTable()
 
-	local numFrames = #self.detectionsByFrame
+	local numFrames = self.detectionsByFrame:size(1)
 	local possibleEndStates = self:possibleStates(numFrames)
 	local bestScore = nil
 	local bestPath = nil
 	for i,v in ipairs(possibleEndStates) do
 		local piResult = self:PI(numFrames, v)
+		print('FINISHED ONE')
 		if bestScore == nil or piResult.score > bestScore then
 			bestScore = piResult.score
 			bestPath = piResult.path
@@ -46,7 +60,7 @@ function SentenceTracker:getBestPath()
 	return bestPath, bestScore
 end
 
-local function SentenceTracker:PI(k, v)
+function SentenceTracker:PI(k, v)
 	-- Use this to index into memo table
 	local key = getKey(k,v)
 
@@ -74,47 +88,50 @@ local function SentenceTracker:PI(k, v)
 
 		scoreToReturn = tracksScore + wordsScore
 		bestPath = {[1]=v}
-	end
-
+	
 	-- Recursive Case
-	local tracksScoreA = 0
-	for r = 1, #self.roles do
-		tracksScoreA = tracksScoreA + self.tracker:detectionStrength(k, v[r])
-	end
-
-	local wordsScoreA = 0
-	for w = 1, #self.words do
-		wordsScoreA = wordsScoreA + math.log(self.words[w]:probOfEmission(v[#self.roles + w], k, v[self.wordToRole[w]]))
-	end
-
-	local prevStates = self:possibleStates(k-1)
-	local bestTransitionScore = nil
-	local bestPathPrefix = nil
-	for i,u in ipairs(prevStates) do
-		local prevResult = self:PI(k-1, u)
-		
-		local tracksScoreB = 0
+	else
+		local tracksScoreA = 0
 		for r = 1, #self.roles do
-			tracksScoreB = tracksScoreB + self.tracker:temporalCoherence(k, u[r], v[r])
+			tracksScoreA = tracksScoreA + self.tracker:detectionStrength(k, v[r])
 		end
 
-		local wordsScoreB = 0
+		local wordsScoreA = 0
 		for w = 1, #self.words do
-			wordsScoreB = wordsScoreB + math.log(self.words[w]:probOfTransition(u[#self.roles + w], v[#self.roles + w])
+			wordsScoreA = wordsScoreA + math.log(self.words[w]:probOfEmission(v[#self.roles + w], k, v[self.wordToRole[w]]))
 		end
 
-		if bestTransitionScore == nil or prevResult.score+tracksScoreB+wordsScoreB > bestTransitionScore then
-			bestTransitionScore = prevResult.score+tracksScoreB+wordsScoreB
-			bestPathPrefix = prevResult.path
+		local prevStates = self:possibleStates(k-1)
+		local bestTransitionScore = nil
+		local bestPathPrefix = nil
+		for i,u in ipairs(prevStates) do			
+			local prevResult = self:PI(k-1, u)
+			
+			local tracksScoreB = 0
+			for r = 1, #self.roles do
+				tracksScoreB = tracksScoreB + self.tracker:temporalCoherence(k, u[r], v[r])
+			end
+
+			local wordsScoreB = 0
+			for w = 1, #self.words do
+				wordsScoreB = wordsScoreB + math.log(self.words[w]:probOfTransition(u[#self.roles + w], v[#self.roles + w]))
+			end
+
+			if bestTransitionScore == nil or prevResult.score+tracksScoreB+wordsScoreB > bestTransitionScore then
+				bestTransitionScore = prevResult.score+tracksScoreB+wordsScoreB
+				bestPathPrefix = prevResult.path
+			end
 		end
+
+		scoreToReturn = bestTransitionScore + tracksScoreA + wordsScoreA
+		bestPath = {}
+		assert(#bestPathPrefix == k-1, 'PATH IS TOO LONG')
+		for p = 1, #bestPathPrefix do
+			table.insert(bestPath, bestPathPrefix[p])
+		end
+		table.insert(bestPath, v)
 	end
 
-	scoreToReturn = bestTransitionScore + tracksScoreA + tracksScoreB
-	bestPath = {}
-	for p = 1, #bestPathPrefix do
-		table.insert(bestPath, bestPathPrefix[p])
-	end
-	table.insert(bestPath, v)
 	local result = {score=scoreToReturn, path=bestPath}
 
 	-- Memoize
@@ -123,8 +140,9 @@ local function SentenceTracker:PI(k, v)
 	return result
 end
 
-local function SentenceTracker:setPIMemoTable()
+function SentenceTracker:setPIMemoTable()
 	self.piMemo = {}
+	self.statesMemo = {}
 	-- for t = 1, #self.detectionsByFrame do
 	-- 	local dimsTable = {}
 	-- 	for r = 1, #self.roles do
@@ -138,9 +156,9 @@ local function SentenceTracker:setPIMemoTable()
 	-- end
 end
 
-local function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path)
+function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path)
 	-- Load the detection proposals
-	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame')
+	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame').detections
 
 	-- Load the optical flow for each frame
 	self.detectionsOptFlow = torch.load(video_optflow_path)
@@ -149,7 +167,7 @@ local function SentenceTracker:processVideo(video_detections_path, video_feature
 	self.detectionFeatures = torch.load(video_features_path)
 end
 
-local function SentenceTracker:parseSentence(sentence)
+function SentenceTracker:parseSentence(sentence)
 	-- TODO: generalize to more than one word
 
 	self.sentence = sentence 	-- for now, sentence is a single word
@@ -157,14 +175,18 @@ local function SentenceTracker:parseSentence(sentence)
 	self.wordToRole = {[1]=1}	-- for now, sentence is a single word
 end
 
-local function SentenceTracker:buildWordModels(word_models)
+function SentenceTracker:buildWordModels(word_models)
 	-- TODO: generalize to more than one word
 
 	self.words = {}
-	self.words[1] = Word:new(word_models[1].emission, word_models[1].transitions, word_models[1].priors, self.detectionsByFrame, self.detectionFeatures)
+	self.words[1] = Word:new(word_models[1].emissions, word_models[1].transitions, word_models[1].priors, self.detectionsByFrame, self.detectionFeatures)
 end
 
-local function SentenceTracker:possibleStates(frameIndx)
+function SentenceTracker:possibleStates(frameIndx)
+	if self.statesMemo[frameIndx] ~= nil then
+		return self.statesMemo[frameIndx]
+	end
+
 	local rolesAssignments = getRoleToDetectionAssignments(#self.roles, self.detectionsByFrame[frameIndx]:size(1))
 	local statesAssignments = self:getWordToStateAssignments(#self.words)
 
@@ -185,12 +207,15 @@ local function SentenceTracker:possibleStates(frameIndx)
 			table.insert(assignments, a)
 		end
 	end
+
+	self.statesMemo[frameIndx] = assignments
+
 	return assignments
 end
 
-local function getRoleToDetectionAssignments(numRoles, numDets)
+function getRoleToDetectionAssignments(numRoles, numDets)
 	local assignments = {}
-	if numRoles == 1 then
+	if numRoles <= 1 then
 		for d = 1,numDets do
 			table.insert(assignments, {[1]=d})
 		end
@@ -212,7 +237,7 @@ local function getRoleToDetectionAssignments(numRoles, numDets)
 	return assignments
 end
 
-local function SentenceTracker:getWordToStateAssignments(numWords)
+function SentenceTracker:getWordToStateAssignments(numWords)
 	local assignments = {}
 	if numWords == 1 then
 		for s = 1, self.words[1].stateTransitions:size(1) do
@@ -235,7 +260,7 @@ local function SentenceTracker:getWordToStateAssignments(numWords)
 	return assignments
 end
 
-local function getKey(k, v)
+function getKey(k, v)
 	local key = (''..k)..':'
 	for i = 1, #v do
 		key = (key..v[i])..'_'
