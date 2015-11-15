@@ -24,9 +24,8 @@ end
 local IMG_DIM = 224
 local LAYER_TO_EXTRACT = 43
 function extractFeatures(img, net)
-	processed_img = processImage(img, IMG_DIM)
-	normd_img = normalizeImage(processed_img)
-
+	local processed_img = processImage(img, IMG_DIM)
+	local normd_img = normalizeImage(processed_img)
 	net:forward(normd_img)
 	local features = net:get(LAYER_TO_EXTRACT).output:clone()
 	return nn.View(1):forward(features)
@@ -88,10 +87,10 @@ end
 
 
 -- Run on test data
-local detectionsByFrame = matio.load('project/test/nico_walking_short.mat' , 'detections_by_frame')
+local detectionsByFrame = matio.load('project/test/nico_100.mat' , 'detections_by_frame')
 local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'project/test/nico_walking_short.avi')
 
-torch.save('project/test/nico_walking_short_features.t7', features)
-torch.save('project/test/nico_walking_short_opticalflow.t7', opticalflow)
+torch.save('project/test/nico_100_features.t7', features)
+torch.save('project/test/nico_100_opticalflow.t7', opticalflow)
 
 

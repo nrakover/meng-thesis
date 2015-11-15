@@ -42,11 +42,11 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	local flow_y_region = image.crop(self.detectionsOptFlow[frameIndx].flow_y, x_min, y_min, x_max, y_max)
 
 	-- Compute summary of flow field
-	-- TODO: use 2D-gaussian for weighted average
-	local avg_flow = torch.Tensor( {torch.mean(flow_x_region), torch.mean(flow_y_region)} )
+	local G = image.gaussian{height=flow_x:size(2), width=flow_x:size(3)}  -- 2D-gaussian kernel for weighted average
+	local avg_flow = torch.Tensor( { torch.conv2(flow_x_region, G)/G:sum() , torch.conv2(flow_y_region, G)/G:sum() } )
 
 	-- Project current detection's center
-	local projected_center = torch.Tensor( {(x_max+x_min)/2, (y_max+y_min)/2} ) + avg_flow
+	local projected_center = torch.Tensor( {(x_max+x_min)/2, (y_max+y_min)/2} ) - avg_flow
 
 
 	-- Get detection bounds for previous frame detection
@@ -72,6 +72,6 @@ end
 function Tracker:setMemoTables()
 	self.memo = {}
 	for t = 2, self.detectionsByFrame:size(1) do
-		table.insert( self.memo, -torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1)) )
+		self.memo[t] = -torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1))
 	end
 end
