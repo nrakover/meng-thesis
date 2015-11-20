@@ -27,15 +27,15 @@ local function dirLookup(dir)
 end
 
 local function split(inputstr, sep)
-        if sep == nil then
-                sep = "%s"
-        end
-        local t={} ; i=1
-        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-                t[i] = str
-                i = i + 1
-        end
-        return t
+    if sep == nil then
+            sep = "%s"
+    end
+    local t={} ; i=1
+    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+            t[i] = str
+            i = i + 1
+    end
+    return t
 end
 
 local function getImgIDToURLMap(synset_id)
@@ -107,9 +107,8 @@ end
 local IMG_DIM = 224
 local LAYER_TO_EXTRACT = 43
 function extractFeatures(img, net)
-	processed_img = processImage(img, IMG_DIM)
-	normd_img = normalizeImage(processed_img)
-
+	local processed_img = processImage(img, IMG_DIM)
+	local normd_img = normalizeImage(processed_img)
 	net:forward(normd_img)
 	local features = net:get(LAYER_TO_EXTRACT).output:clone()
 	return nn.View(1):forward(features)
