@@ -46,16 +46,17 @@ function SentenceTracker:getBestPath()
 	self:setPIMemoTable()
 
 	local numFrames = self.detectionsByFrame:size(1)
-	local possibleEndStates = self:possibleStates(numFrames)
+	local v = self:startNode()
 	local bestScore = nil
 	local bestPath = nil
-	for i,v in ipairs(possibleEndStates) do
+	while v ~= nil do
 		local piResult = self:PI(numFrames, v)
 		print('FINISHED ONE')
 		if bestScore == nil or piResult.score > bestScore then
 			bestScore = piResult.score
 			bestPath = piResult.path
 		end
+		v = self:nextNode(v)
 	end
 	return bestPath, bestScore
 end
@@ -66,6 +67,9 @@ function SentenceTracker:PI(k, v)
 
 	-- Check if value is memoized
 	if self.piMemo[key] ~= nil then
+
+		print('KEY FOUND: '..key)
+
 		return self.piMemo[key]
 	end
 
@@ -101,10 +105,10 @@ function SentenceTracker:PI(k, v)
 			wordsScoreA = wordsScoreA + math.log(self.words[w]:probOfEmission(v[#self.roles + w], k, v[self.wordToRole[w]]))
 		end
 
-		local prevStates = self:possibleStates(k-1)
+		local u = self:startNode()
 		local bestTransitionScore = nil
 		local bestPathPrefix = nil
-		for i,u in ipairs(prevStates) do			
+		while u ~= nil do			
 			local prevResult = self:PI(k-1, u)
 			
 			local tracksScoreB = 0
@@ -121,11 +125,11 @@ function SentenceTracker:PI(k, v)
 				bestTransitionScore = prevResult.score+tracksScoreB+wordsScoreB
 				bestPathPrefix = prevResult.path
 			end
+			u = self:nextNode(u)
 		end
 
 		scoreToReturn = bestTransitionScore + tracksScoreA + wordsScoreA
 		bestPath = {}
-		assert(#bestPathPrefix == k-1, 'PATH IS TOO LONG')
 		for p = 1, #bestPathPrefix do
 			table.insert(bestPath, bestPathPrefix[p])
 		end
@@ -182,82 +186,37 @@ function SentenceTracker:buildWordModels(word_models)
 	self.words[1] = Word:new(word_models[1].emissions, word_models[1].transitions, word_models[1].priors, self.detectionsByFrame, self.detectionFeatures)
 end
 
-function SentenceTracker:possibleStates(frameIndx)
-	if self.statesMemo[frameIndx] ~= nil then
-		return self.statesMemo[frameIndx]
+function SentenceTracker:startNode()
+	local node = {}
+	for i = 1, #self.roles + #self.words do
+		node[i] = 1
 	end
-
-	local rolesAssignments = getRoleToDetectionAssignments(#self.roles, self.detectionsByFrame[frameIndx]:size(1))
-	local statesAssignments = self:getWordToStateAssignments(#self.words)
-
-	local assignments = {}
-	for i = 1, #rolesAssignments do
-		local ra = rolesAssignments[i]
-		for j = 1, #statesAssignments do
-			local sa = statesAssignments[j]
-			
-			local a = {}
-			for r = 1, #ra do
-				table.insert(a, ra[r])
-			end
-			for s = 1, #sa do
-				table.insert(a, sa[s])
-			end
-
-			table.insert(assignments, a)
-		end
-	end
-
-	self.statesMemo[frameIndx] = assignments
-
-	return assignments
+	return node
 end
 
-function getRoleToDetectionAssignments(numRoles, numDets)
-	local assignments = {}
-	if numRoles <= 1 then
-		for d = 1,numDets do
-			table.insert(assignments, {[1]=d})
-		end
-		return assignments
-	end
 
-	local subAssignments = getRoleToDetectionAssignments(numRoles-1, numDets)
-	for i = 1, #subAssignments do
-		local subAssmnt = subAssignments[i]
-		for d = 1, numDets do
-			local a = {}
-			for j = 1, #subAssmnt do
-				a[j] = subAssmnt[j]
-			end
-			table.insert(a, d)
-			table.insert(assignments, a)
+function SentenceTracker:nextNode( node )
+	local nextNode = {}
+
+	local carry = 1
+	for i = #node, 1, -1 do
+		if node[i] == self:maxValueAt(i) and carry == 1 then
+			if i == 1 then return nil end
+			nextNode[i] = 1
+		else
+			nextNode[i] = node[i] + carry
+			carry = 0
 		end
 	end
-	return assignments
+	return nextNode
 end
 
-function SentenceTracker:getWordToStateAssignments(numWords)
-	local assignments = {}
-	if numWords == 1 then
-		for s = 1, self.words[1].stateTransitions:size(1) do
-			table.insert(assignments, {[1]=s})
-		end
+function SentenceTracker:maxValueAt( i )
+	if i <= #self.roles then
+		return self.detectionsByFrame:size(2)
 	else
-		local subAssignments = self:getWordToStateAssignments(numWords-1)
-		for i = 1, #subAssignments do
-			local subAssmnt = subAssignments[i]
-			for s = 1, self.words[numWords].stateTransitions:size(1) do
-				local a = {}
-				for j = 1, #subAssmnt do
-					a[j] = subAssmnt[j]
-				end
-				table.insert(a, s)
-				table.insert(assignments, a)
-			end
-		end
+		return self.words[i - #self.roles].stateTransitions:size(1)
 	end
-	return assignments
 end
 
 function getKey(k, v)
@@ -267,6 +226,84 @@ function getKey(k, v)
 	end
 	return key
 end
+
+-- function SentenceTracker:possibleStates(frameIndx)
+-- 	if self.statesMemo[frameIndx] ~= nil then
+-- 		return self.statesMemo[frameIndx]
+-- 	end
+
+-- 	local rolesAssignments = getRoleToDetectionAssignments(#self.roles, self.detectionsByFrame[frameIndx]:size(1))
+-- 	local statesAssignments = self:getWordToStateAssignments(#self.words)
+
+-- 	local assignments = {}
+-- 	for i = 1, #rolesAssignments do
+-- 		local ra = rolesAssignments[i]
+-- 		for j = 1, #statesAssignments do
+-- 			local sa = statesAssignments[j]
+			
+-- 			local a = {}
+-- 			for r = 1, #ra do
+-- 				table.insert(a, ra[r])
+-- 			end
+-- 			for s = 1, #sa do
+-- 				table.insert(a, sa[s])
+-- 			end
+
+-- 			table.insert(assignments, a)
+-- 		end
+-- 	end
+
+-- 	self.statesMemo[frameIndx] = assignments
+
+-- 	return assignments
+-- end
+
+-- function getRoleToDetectionAssignments(numRoles, numDets)
+-- 	local assignments = {}
+-- 	if numRoles <= 1 then
+-- 		for d = 1,numDets do
+-- 			table.insert(assignments, {[1]=d})
+-- 		end
+-- 		return assignments
+-- 	end
+
+-- 	local subAssignments = getRoleToDetectionAssignments(numRoles-1, numDets)
+-- 	for i = 1, #subAssignments do
+-- 		local subAssmnt = subAssignments[i]
+-- 		for d = 1, numDets do
+-- 			local a = {}
+-- 			for j = 1, #subAssmnt do
+-- 				a[j] = subAssmnt[j]
+-- 			end
+-- 			table.insert(a, d)
+-- 			table.insert(assignments, a)
+-- 		end
+-- 	end
+-- 	return assignments
+-- end
+
+-- function SentenceTracker:getWordToStateAssignments(numWords)
+-- 	local assignments = {}
+-- 	if numWords == 1 then
+-- 		for s = 1, self.words[1].stateTransitions:size(1) do
+-- 			table.insert(assignments, {[1]=s})
+-- 		end
+-- 	else
+-- 		local subAssignments = self:getWordToStateAssignments(numWords-1)
+-- 		for i = 1, #subAssignments do
+-- 			local subAssmnt = subAssignments[i]
+-- 			for s = 1, self.words[numWords].stateTransitions:size(1) do
+-- 				local a = {}
+-- 				for j = 1, #subAssmnt do
+-- 					a[j] = subAssmnt[j]
+-- 				end
+-- 				table.insert(a, s)
+-- 				table.insert(assignments, a)
+-- 			end
+-- 		end
+-- 	end
+-- 	return assignments
+-- end
 
 
 

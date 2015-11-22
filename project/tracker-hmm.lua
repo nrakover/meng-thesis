@@ -13,8 +13,8 @@ function Tracker:new(detections_by_frame, detections_optical_flow)
 end
 
 function Tracker:detectionStrength(frameIndx, detectionIndx)
-	-- TODO: consider better metric
-	return math.log(1/self.detectionsByFrame[frameIndx]:size(1))
+	-- TODO: insert score if available from object proposal generator
+	return 0
 end
 
 function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
@@ -22,7 +22,7 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	if frameIndx == 1 then return 0 end
 
 	-- Check if value is memoized
-	if self.memo[frameIndx][prevDetectionIndx][detectionIndx] ~= -1 then
+	if self.memo[frameIndx][prevDetectionIndx][detectionIndx] ~= 1 then
 		return self.memo[frameIndx][prevDetectionIndx][detectionIndx]
 	end
 
@@ -42,8 +42,10 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	local flow_y_region = image.crop(self.detectionsOptFlow[frameIndx].flow_y, x_min, y_min, x_max, y_max)
 
 	-- Compute summary of flow field
-	local G = image.gaussian{height=flow_x:size(2), width=flow_x:size(3)}  -- 2D-gaussian kernel for weighted average
-	local avg_flow = torch.Tensor( { torch.conv2(flow_x_region, G)/G:sum() , torch.conv2(flow_y_region, G)/G:sum() } )
+	local G = (image.gaussian{height=flow_x_region:size(2), width=flow_x_region:size(3)}):float()  -- 2D-gaussian kernel for weighted average
+	local avg_flow_x = torch.conv2(torch.squeeze(flow_x_region,1), G)/G:sum()
+	local avg_flow_y = torch.conv2(torch.squeeze(flow_y_region,1), G)/G:sum()
+	local avg_flow = torch.Tensor( { avg_flow_x[1][1] , avg_flow_y[1][1] } )
 
 	-- Project current detection's center
 	local projected_center = torch.Tensor( {(x_max+x_min)/2, (y_max+y_min)/2} ) - avg_flow
@@ -72,6 +74,6 @@ end
 function Tracker:setMemoTables()
 	self.memo = {}
 	for t = 2, self.detectionsByFrame:size(1) do
-		self.memo[t] = -torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1))
+		self.memo[t] = torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1))
 	end
 end

@@ -41,7 +41,7 @@ function Word:probOfTransition(prevState, newState)
 end
 
 function Word:statePrior(state)
-	return self.statePriors[state][1]
+	return self.statePriors[state]
 end
 
 function Word:setMemoTables()

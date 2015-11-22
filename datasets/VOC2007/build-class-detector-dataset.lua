@@ -151,7 +151,7 @@ function generateDataset(target_class, outfile, numPositiveExamples, numNegative
 
 		if numPositiveExamples ~= nil then
 			print(100 * pCount / numPositiveExamples)
-		elseif pCount % 100 == 1 then
+		else
 			print(pCount)
 		end
 	end

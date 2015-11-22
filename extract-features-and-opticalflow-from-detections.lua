@@ -8,7 +8,7 @@ require 'loadcaffe'
 local matio = require 'matio'
 matio.use_lua_strings = true
 
-dofile('torch-libs/overfeat-torch/load-and-process-img.lua')
+dofile('load-and-process-img.lua')
 dofile('torch-libs/lua---liuflow/init.lua')
 
 
@@ -31,7 +31,7 @@ function extractFeatures(img, net)
 	return nn.View(1):forward(features)
 end
 
-local net = loadcaffe.load('networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', 'networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
+local net = loadcaffe.load('/afs/csail.mit.edu/u/n/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', '/afs/csail.mit.edu/u/n/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
 
 function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	local w = detectionsByFrame.width[1][1]
@@ -56,6 +56,8 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 		if frameIndx ~= 1 then
 			local flow_norm, flow_angle, warp, fx, fy = liuflow.infer({prevFrame, frame})
 
+			print('Optical flow computed for frame '..frameIndx)
+
 			opticalflowByFrame[frameIndx] = {flow_x=fx:clone(), flow_y=fy:clone()}
 		end
 		
@@ -75,11 +77,14 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 			-- Compute features
 			local frame_region_features = extractFeatures(frame_region, net)
 			featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
+
+			-- Show progress on the current frame
+			io.write(('  '..(100 * detIndx / frameDetections:size(1)))..'%', '\r'); io.flush();
 		end
 
 		prevFrame = frame:clone()
 
-		print(100 * frameIndx / detectionsByFrame.detections:size(1))
+		print('Done with frame '..frameIndx)
 	end
 
 	return featuresByFrame, opticalflowByFrame
@@ -87,10 +92,10 @@ end
 
 
 -- Run on test data
-local detectionsByFrame = matio.load('project/test/nico_100.mat' , 'detections_by_frame')
-local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'project/test/nico_walking_short.avi')
+local detectionsByFrame = matio.load('project/test/nico_small.mat' , 'detections_by_frame')
+local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'project/test/nico_small.avi')
 
-torch.save('project/test/nico_100_features.t7', features)
-torch.save('project/test/nico_100_opticalflow.t7', opticalflow)
+torch.save('project/test/nico_small_features.t7', features)
+torch.save('project/test/nico_small_opticalflow.t7', opticalflow)
 
 
