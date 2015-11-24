@@ -51,13 +51,14 @@ function SentenceTracker:getBestPath()
 	local bestPath = nil
 	while v ~= nil do
 		local piResult = self:PI(numFrames, v)
-		print('FINISHED ONE')
 		if bestScore == nil or piResult.score > bestScore then
 			bestScore = piResult.score
 			bestPath = piResult.path
 		end
 		v = self:nextNode(v)
 	end
+
+	print('==> FINISHED')
 	return bestPath, bestScore
 end
 
@@ -67,9 +68,6 @@ function SentenceTracker:PI(k, v)
 
 	-- Check if value is memoized
 	if self.piMemo[key] ~= nil then
-
-		print('KEY FOUND: '..key)
-
 		return self.piMemo[key]
 	end
 
@@ -140,6 +138,8 @@ function SentenceTracker:PI(k, v)
 
 	-- Memoize
 	self.piMemo[key] = result
+
+	print('Computed: '..key)
 
 	return result
 end
