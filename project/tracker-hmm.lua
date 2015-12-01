@@ -64,11 +64,15 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	local prev_center = torch.Tensor( {(prev_x_max+prev_x_min)/2, (prev_y_max+prev_y_min)/2} )
 
 
-	-- Return negative Euclidean distance between previous detection's center and backprojected center
-	local d = -torch.dist(projected_center, prev_center)
+	-- Negative Euclidean distance between previous detection's center and backprojected center
+	local d = torch.dist(projected_center, prev_center)
+	-- Normalize the distance into [0,1]
+	local max_d = torch.dist( torch.Tensor({1,1}), torch.Tensor({self.detectionsOptFlow[frameIndx].flow_x:size(2), self.detectionsOptFlow[frameIndx].flow_x:size(3)}) )
+	local score = math.log( 1 - (d / max_d) )
+
 	-- Memoize
-	self.memo[frameIndx][prevDetectionIndx][detectionIndx] = d
-	return d
+	self.memo[frameIndx][prevDetectionIndx][detectionIndx] = score
+	return score
 end
 
 function Tracker:setMemoTables()

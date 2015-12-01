@@ -3,7 +3,7 @@ require 'nn'
 require 'image'
 require 'loadcaffe'
 
-dofile('../../torch-libs/overfeat-torch/load-and-process-img.lua')
+dofile('../../load-and-process-img.lua')
 
 local http = require 'socket.http'
 local matio = require 'matio'

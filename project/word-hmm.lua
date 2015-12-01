@@ -1,7 +1,7 @@
 require 'torch'
 require 'svm'
 
-dofile('/afs/csail.mit.edu/u/n/nrakover/meng/data-to-svmlight.lua');
+dofile('/local/nrakover/meng/data-to-svmlight.lua');
 
 Word = {}
 

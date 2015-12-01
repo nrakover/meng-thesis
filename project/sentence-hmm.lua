@@ -3,8 +3,8 @@ require 'torch'
 local matio = require 'matio'
 matio.use_lua_strings = true
 
-dofile('/afs/csail.mit.edu/u/n/nrakover/meng/project/tracker-hmm.lua')
-dofile('/afs/csail.mit.edu/u/n/nrakover/meng/project/word-hmm.lua')
+dofile('/local/nrakover/meng/project/tracker-hmm.lua')
+dofile('/local/nrakover/meng/project/word-hmm.lua')
 
 
 SentenceTracker = {}
