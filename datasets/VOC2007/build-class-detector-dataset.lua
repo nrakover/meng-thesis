@@ -4,7 +4,7 @@ require 'loadcaffe'
 require 'LuaXML'
 require 'image'
 
-dofile('../../torch-libs/overfeat-torch/load-and-process-img.lua')
+dofile('../../load-and-process-img.lua')
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
@@ -152,7 +152,7 @@ function generateDataset(target_class, outfile, numPositiveExamples, numNegative
 		if numPositiveExamples ~= nil then
 			print(100 * pCount / numPositiveExamples)
 		else
-			print(pCount)
+			print( ('Pos: '..pCount)..('   Neg: '..nCount) )
 		end
 	end
 
@@ -161,7 +161,7 @@ function generateDataset(target_class, outfile, numPositiveExamples, numNegative
 end
 
 
-generateDataset('person', 'person_dataset.t7', nil, nil, 4)
+generateDataset('car', 'car_dataset.t7', nil, nil, 4)
 
 
 

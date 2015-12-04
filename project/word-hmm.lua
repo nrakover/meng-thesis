@@ -14,26 +14,30 @@ function Word:new(emission_models, state_transitions, state_priors, detections_b
 	return newObj
 end
 
-function Word:probOfEmission(state, frameIndx, detectionIndx)
+function Word:probOfEmission(state, frameIndx, detections)
+	local key = self:getKey(state, frameIndx, detections)
+
 	-- return memoized value if present
-	if self.memo[frameIndx][state][detectionIndx] ~= -1 then
-		return self.memo[frameIndx][state][detectionIndx]
+	if self.memo[key] ~= nil then
+		return self.memo[key]
 	end
 
 	-- else compute value
-	local features_for_frame_detections = self.detectionFeatures[frameIndx]
-	local formatted_features = t7ToSvmlight(features_for_frame_detections, torch.ones(#features_for_frame_detections))
+	local stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone()
+	for i = 2, #detections do
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone(), 1)
+	end
+
+	local formatted_features = t7ToSvmlight({[1]=stacked_features_for_detections}, torch.ones(1))
 
 	local labels,accuracy,prob = liblinear.predict(formatted_features, self.emissionModels[state], '-b 1 -q')
 	
 	-- memoize
 	local positive_class_indx = 1
 	if self.emissionModels[state].label[2] == 1 then positive_class_indx = 2 end
-	for d = 1,prob:size(1) do
-		self.memo[frameIndx][state][d] = prob[d][positive_class_indx]
-	end
+	self.memo[key] = prob[1][positive_class_indx]
 
-	return self.memo[frameIndx][state][detectionIndx]
+	return self.memo[key]
 end
 
 function Word:probOfTransition(prevState, newState)
@@ -46,10 +50,14 @@ end
 
 function Word:setMemoTables()
 	self.memo = {}
-	local nStates = self.stateTransitions:size(1)
-	for t = 1, self.detectionsByFrame:size(1) do
-		table.insert(self.memo, -torch.ones(nStates, self.detectionsByFrame[t]:size(1)))
+end
+
+function Word:getKey(state, frame, detections)
+	local key = (''..state)..':'..frame
+	for i = 1, #detections do
+		key = (key..detections[i])..'_'
 	end
+	return key
 end
 
 	 

@@ -2,9 +2,9 @@ require 'svm';
 dofile('data-to-svmlight.lua' );
 dofile('train-test-split.lua' );
 
--- detector_training_data = torch.load('datasets/VOC2007/person_dataset.t7');
--- detector_training_data = torch.load('datasets/VOC2007/car_dataset.t7');
-detector_training_data = torch.load('datasets/imagenet/attributes_datasets/black_FIRST_HALF.t7');
+-- person_training_data = torch.load('datasets/VOC2007/person_dataset.t7');
+car_training_data = torch.load('datasets/VOC2007/car_dataset.t7');
+black_training_data = torch.load('datasets/imagenet/attributes_datasets/black_FIRST_HALF.t7');
 
 
 -- train, test = getTrainTestSplit(detector_training_data, 0.9);
@@ -13,18 +13,35 @@ detector_training_data = torch.load('datasets/imagenet/attributes_datasets/black
 -- classifier = liblinear.train(train_d, '-s 0 -q');
 -- labels,accuracy,prob = liblinear.predict(test_d, classifier, '-b 1');
 
-train_full = t7ToSvmlight(detector_training_data.data, detector_training_data.label);
-classifier = liblinear.train(train_full, '-s 0 -q');
-labels,accuracy,prob = liblinear.predict(train_full, classifier, '-b 1');
+-- train_full = t7ToSvmlight(person_training_data.data, person_training_data.label);
+-- person_classifier = liblinear.train(train_full, '-s 0 -q');
+-- labels,accuracy,prob = liblinear.predict(train_full, person_classifier, '-b 1');
 
-word_model = {emissions={classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+train_full = t7ToSvmlight(car_training_data.data, car_training_data.label);
+car_classifier = liblinear.train(train_full, '-s 0 -q');
+labels,accuracy,prob = liblinear.predict(train_full, car_classifier, '-b 1');
+
+train_full = t7ToSvmlight(black_training_data.data, black_training_data.label);
+black_classifier = liblinear.train(train_full, '-s 0 -q');
+labels,accuracy,prob = liblinear.predict(train_full, black_classifier, '-b 1');
+
+
+
+word_models = {}
+word_models['car'] = {emissions={car_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+word_models['black'] = {emissions={black_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+
+sentence = {}
+sentence[1] = {word='black', roles={1}}
+sentence[2] = {word='car', roles={1}}
+
 
 dofile('project/sentence-hmm.lua');
 dofile('track-to-mat.lua')
-sentence = SentenceTracker:new('mysentence', 'script_in/black-lambo1.mat', 'script_in/black-lambo1_features.t7', 'script_in/black-lambo1_opticalflow.t7', {word_model})
+sentence = SentenceTracker:new(sentence, 'script_in/black-lambo1.mat', 'script_in/black-lambo1_features.t7', 'script_in/black-lambo1_opticalflow.t7', word_models)
 track = sentence:getBestTrack()
 
-trackToMat(track, 'script_out/black-lambo1-BLACK_TRACK.mat')
+trackToMat(track, 'script_out/black-lambo1-BLACK_CAR_TRACK.mat')
 
 
 -- require 'nn';

@@ -29,6 +29,45 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 	return newObj
 end
 
+function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path)
+	-- Load the detection proposals
+	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame').detections
+
+	-- Load the optical flow for each frame
+	self.detectionsOptFlow = torch.load(video_optflow_path)
+
+	-- Load the neural network features from proposals
+	self.detectionFeatures = torch.load(video_features_path)
+end
+
+function SentenceTracker:parseSentence(sentence)
+	-- TODO: generalize to more than one word
+
+	self.positionToWord = {}
+	self.positionToRoles = {}
+	self.numRoles = 0
+	for i = 1, #sentence do
+		word_role_pair = sentence[i]
+		self.positionToWord[i] = word_role_pair.word
+		self.positionToRoles[i] = word_role_pair.roles
+		for j = 1, #word_role_pair.roles do
+			r = word_role_pair.roles[j]
+			if r > self.numRoles then
+				self.numRoles = r
+			end
+		end
+	end
+
+	self.wordToRole = {[1]=1}	-- for now, sentence is a single word
+end
+
+function SentenceTracker:buildWordModels(word_models)
+	self.words = {}
+	for word,model in pairs(word_models) do
+		self.words[word] = Word:new(model.emissions, model.transitions, model.priors, self.detectionsByFrame, self.detectionFeatures)
+	end
+end
+
 function SentenceTracker:getBestTrack()
 	local path = self:getBestPath()
 
@@ -64,7 +103,7 @@ end
 
 function SentenceTracker:PI(k, v)
 	-- Use this to index into memo table
-	local key = getKey(k,v)
+	local key = self:getKey(k,v)
 
 	-- Check if value is memoized
 	if self.piMemo[key] ~= nil then
@@ -75,64 +114,59 @@ function SentenceTracker:PI(k, v)
 	local scoreToReturn = nil
 	local bestPath = nil
 
-	-- Base Case
+	-- ============================
+	-- Calculate observation score
+	-- 1. Tracker observation scores
+	local tracksObservationScore = self:computeTracksObservationScore( k, v )
+
+	-- 2. Words observation scores
+	local wordsObservationScore = self:computeWordsObservationScore( k, v )
+
+
+	-- Base Case:
 	if k == 1 then
-		local tracksScore = 0
-		for r = 1, #self.roles do
-			tracksScore = tracksScore + self.tracker:detectionStrength(k, v[r])
-		end
+		-- Word prior scores
+		local wordsPriorScore = self:computeWordsPriorScore( v )
 
-		local wordsScore = 0
-		for w = 1, #self.words do
-			wordsScore = wordsScore + math.log(self.words[w]:probOfEmission(v[#self.roles + w], k, v[self.wordToRole[w]]))
-			wordsScore = wordsScore + math.log(self.words[w]:statePrior(v[#self.roles + w]))
-		end
-
-		scoreToReturn = tracksScore + wordsScore
+		scoreToReturn = tracksObservationScore + wordsObservationScore + wordsPriorScore
 		bestPath = {[1]=v}
-	
-	-- Recursive Case
+
+	-- Recursive case:
 	else
-		local tracksScoreA = 0
-		for r = 1, #self.roles do
-			tracksScoreA = tracksScoreA + self.tracker:detectionStrength(k, v[r])
-		end
+		-- Calculate best transition score
 
-		local wordsScoreA = 0
-		for w = 1, #self.words do
-			wordsScoreA = wordsScoreA + math.log(self.words[w]:probOfEmission(v[#self.roles + w], k, v[self.wordToRole[w]]))
-		end
-
+		-- Iterate over possibe previous nodes
 		local u = self:startNode()
 		local bestTransitionScore = nil
 		local bestPathPrefix = nil
 		while u ~= nil do			
 			local prevResult = self:PI(k-1, u)
 			
-			local tracksScoreB = 0
-			for r = 1, #self.roles do
-				tracksScoreB = tracksScoreB + self.tracker:temporalCoherence(k, u[r], v[r])
-			end
+			-- 1. Tracker temporal coherence scores
+			local tracksTransitionScore = self:computeTracksTransitionScore( k, u, v )
 
-			local wordsScoreB = 0
-			for w = 1, #self.words do
-				wordsScoreB = wordsScoreB + math.log(self.words[w]:probOfTransition(u[#self.roles + w], v[#self.roles + w]))
-			end
+			-- 2. Word state transition scores 
+			local wordsTransitionScore = self:computeWordsTransitionScore( k, u, v )
 
-			if bestTransitionScore == nil or prevResult.score+tracksScoreB+wordsScoreB > bestTransitionScore then
-				bestTransitionScore = prevResult.score+tracksScoreB+wordsScoreB
+			-- Check if current score is best score
+			if bestTransitionScore == nil or prevResult.score+tracksTransitionScore+wordsTransitionScore > bestTransitionScore then
+				bestTransitionScore = prevResult.score+tracksTransitionScore+wordsTransitionScore
 				bestPathPrefix = prevResult.path
 			end
+
+			-- Next node
 			u = self:nextNode(u)
 		end
 
-		scoreToReturn = bestTransitionScore + tracksScoreA + wordsScoreA
+		scoreToReturn = tracksObservationScore + wordsObservationScore + bestTransitionScore
 		bestPath = {}
 		for p = 1, #bestPathPrefix do
 			table.insert(bestPath, bestPathPrefix[p])
 		end
 		table.insert(bestPath, v)
 	end
+
+	-- ============================
 
 	local result = {score=scoreToReturn, path=bestPath}
 
@@ -144,56 +178,78 @@ function SentenceTracker:PI(k, v)
 	return result
 end
 
+function SentenceTracker:computeTracksObservationScore( k, v )
+	local tracksObservationScore = 0
+	for r = 1, self.numRoles do
+		tracksObservationScore = tracksObservationScore + self.tracker:detectionStrength(k, v[r])
+	end
+	return tracksObservationScore
+end
+
+function SentenceTracker:computeWordsObservationScore( k, v )
+	local wordsObservationScore = 0
+	for i,w in ipairs(self.positionToWord) do
+		if v[i + self.numRoles] ~= 0 then
+			local state = v[i + self.numRoles]
+			local detections = {}
+			for j,r in ipairs(self.positionToRoles[i]) do
+				detections[j] = v[r]
+			end
+			wordsObservationScore = wordsObservationScore + math.log(self.words[w]:probOfEmission(state, k, detections))
+		end
+	end
+	return wordsObservationScore
+end
+
+function SentenceTracker:computeWordsPriorScore( v )
+	local wordsPriorScore = 0
+	for i,w in ipairs(self.positionToWord) do
+		if v[i + self.numRoles] ~= 0 then
+			local state = v[i + self.numRoles]
+			wordsPriorScore = wordsPriorScore + math.log(self.words[w]:statePrior(state))
+		end
+	end
+	return wordsPriorScore
+end
+
+function SentenceTracker:computeTracksTransitionScore( k, u, v )
+	local tracksTransitionScore = 0
+	for r = 1, self.numRoles do
+		tracksTransitionScore = tracksTransitionScore + self.tracker:temporalCoherence(k, u[r], v[r])
+	end
+	return tracksTransitionScore
+end
+
+function SentenceTracker:computeWordsTransitionScore( k, u, v )
+	local wordsTransitionScore = 0
+	for i,w in ipairs(self.positionToWord) do
+		if v[i + self.numRoles] ~= 0 then
+			local state = v[i + self.numRoles]
+			local prevState = u[i + self.numRoles]
+			wordsTransitionScore = wordsTransitionScore + math.log(self.words[w]:probOfTransition(prevState, state))
+		end
+	end
+	return wordsTransitionScore
+end
+
 function SentenceTracker:setPIMemoTable()
 	self.piMemo = {}
-	self.statesMemo = {}
-	-- for t = 1, #self.detectionsByFrame do
-	-- 	local dimsTable = {}
-	-- 	for r = 1, #self.roles do
-	-- 		table.insert(dimsTable, self.detectionsByFrame[t]:size(1))
-	-- 	end
-	-- 	for w = 1, #self.words do
-	-- 		table.insert(dimsTable, self.words[w].stateTransitions:size(1))
-	-- 	end
-
-	-- 	table.insert(self.piMemo, torch.ones(torch.LongStorage(dimsTable)))
-	-- end
-end
-
-function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path)
-	-- Load the detection proposals
-	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame').detections
-
-	-- Load the optical flow for each frame
-	self.detectionsOptFlow = torch.load(video_optflow_path)
-
-	-- Load the neural network features from proposals
-	self.detectionFeatures = torch.load(video_features_path)
-end
-
-function SentenceTracker:parseSentence(sentence)
-	-- TODO: generalize to more than one word
-
-	self.sentence = sentence 	-- for now, sentence is a single word
-	self.roles = {sentence}  	-- for now, sentence is a single word
-	self.wordToRole = {[1]=1}	-- for now, sentence is a single word
-end
-
-function SentenceTracker:buildWordModels(word_models)
-	-- TODO: generalize to more than one word
-
-	self.words = {}
-	self.words[1] = Word:new(word_models[1].emissions, word_models[1].transitions, word_models[1].priors, self.detectionsByFrame, self.detectionFeatures)
 end
 
 function SentenceTracker:startNode()
 	local node = {}
-	for i = 1, #self.roles + #self.words do
+	for i = 1, self.numRoles do
 		node[i] = 1
+	end
+	for i,w in ipairs(self.positionToWord) do
+		if self.words[w] ~= nil then
+			node[i + self.numRoles] = 1
+		else
+			node[i + self.numRoles] = 0
+		end
 	end
 	return node
 end
-
 
 function SentenceTracker:nextNode( node )
 	local nextNode = {}
@@ -202,7 +258,11 @@ function SentenceTracker:nextNode( node )
 	for i = #node, 1, -1 do
 		if node[i] == self:maxValueAt(i) and carry == 1 then
 			if i == 1 then return nil end
-			nextNode[i] = 1
+			if self:maxValueAt(i) == 0 then
+				nextNode[i] = 0
+			else
+				nextNode[i] = 1
+			end
 		else
 			nextNode[i] = node[i] + carry
 			carry = 0
@@ -212,101 +272,25 @@ function SentenceTracker:nextNode( node )
 end
 
 function SentenceTracker:maxValueAt( i )
-	if i <= #self.roles then
+	if i <= self.numRoles then
 		return self.detectionsByFrame:size(2)
 	else
-		return self.words[i - #self.roles].stateTransitions:size(1)
+		local w = self.positionToWord[i - self.numRoles]
+		if self.words[w] ~= nil then
+			return self.words[w].stateTransitions:size(1)
+		else
+			return 0
+		end
 	end
 end
 
-function getKey(k, v)
+function SentenceTracker:getKey(k, v)
 	local key = (''..k)..':'
 	for i = 1, #v do
 		key = (key..v[i])..'_'
 	end
 	return key
 end
-
--- function SentenceTracker:possibleStates(frameIndx)
--- 	if self.statesMemo[frameIndx] ~= nil then
--- 		return self.statesMemo[frameIndx]
--- 	end
-
--- 	local rolesAssignments = getRoleToDetectionAssignments(#self.roles, self.detectionsByFrame[frameIndx]:size(1))
--- 	local statesAssignments = self:getWordToStateAssignments(#self.words)
-
--- 	local assignments = {}
--- 	for i = 1, #rolesAssignments do
--- 		local ra = rolesAssignments[i]
--- 		for j = 1, #statesAssignments do
--- 			local sa = statesAssignments[j]
-			
--- 			local a = {}
--- 			for r = 1, #ra do
--- 				table.insert(a, ra[r])
--- 			end
--- 			for s = 1, #sa do
--- 				table.insert(a, sa[s])
--- 			end
-
--- 			table.insert(assignments, a)
--- 		end
--- 	end
-
--- 	self.statesMemo[frameIndx] = assignments
-
--- 	return assignments
--- end
-
--- function getRoleToDetectionAssignments(numRoles, numDets)
--- 	local assignments = {}
--- 	if numRoles <= 1 then
--- 		for d = 1,numDets do
--- 			table.insert(assignments, {[1]=d})
--- 		end
--- 		return assignments
--- 	end
-
--- 	local subAssignments = getRoleToDetectionAssignments(numRoles-1, numDets)
--- 	for i = 1, #subAssignments do
--- 		local subAssmnt = subAssignments[i]
--- 		for d = 1, numDets do
--- 			local a = {}
--- 			for j = 1, #subAssmnt do
--- 				a[j] = subAssmnt[j]
--- 			end
--- 			table.insert(a, d)
--- 			table.insert(assignments, a)
--- 		end
--- 	end
--- 	return assignments
--- end
-
--- function SentenceTracker:getWordToStateAssignments(numWords)
--- 	local assignments = {}
--- 	if numWords == 1 then
--- 		for s = 1, self.words[1].stateTransitions:size(1) do
--- 			table.insert(assignments, {[1]=s})
--- 		end
--- 	else
--- 		local subAssignments = self:getWordToStateAssignments(numWords-1)
--- 		for i = 1, #subAssignments do
--- 			local subAssmnt = subAssignments[i]
--- 			for s = 1, self.words[numWords].stateTransitions:size(1) do
--- 				local a = {}
--- 				for j = 1, #subAssmnt do
--- 					a[j] = subAssmnt[j]
--- 				end
--- 				table.insert(a, s)
--- 				table.insert(assignments, a)
--- 			end
--- 		end
--- 	end
--- 	return assignments
--- end
-
-
-
 
 
 
