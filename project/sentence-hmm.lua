@@ -98,6 +98,9 @@ function SentenceTracker:getBestPath()
 end
 
 function SentenceTracker:partialEStep( words_to_learn )
+	-- Summary statistics to accumulate
+	local state_transitions_by_word, priors_per_word, observations_per_word = self:initSummaryStatistics(words_to_learn)
+
 	-- Initialize memo tables
 	self.alphaMemo = {}
 	self.betaMemo = {}
@@ -116,9 +119,10 @@ function SentenceTracker:partialEStep( words_to_learn )
 				-- Compute adjacent node posteriors
 				local transitions_ll = self:computeTracksTransitionScore( frameIndx+1, p, q ) + self:computeWordsTransitionScore( frameIndx+1, p, q )
 				local observations_ll = self:computeTracksObservationScore( frameIndx, p ) + self:computeWordsObservationScore( frameIndx, p )
-				local log_posterior_p_to_q = ( self:logAlpha(frameIndx, p) + transitions_ll + observations_ll + self:logBeta(frameIndx+1, q) ) - Z
+				local posterior_p_to_q = math.exp( ( self:logAlpha(frameIndx, p) + transitions_ll + observations_ll + self:logBeta(frameIndx+1, q) ) - Z )
 
-				-- TODO: do the stuff with the posterior
+				-- Accumulate the posterior
+				state_transitions_by_word, priors_per_word, observations_per_word = self:accumulatePosterior( posterior_p_to_q, frameIndx, p, q, state_transitions_by_word, priors_per_word, observations_per_word )
 
 				-- Next node
 				q = self:nextNode(q)
@@ -127,6 +131,75 @@ function SentenceTracker:partialEStep( words_to_learn )
 			-- Next node
 			p = self:nextNode(p)
 		end
+
+	return state_transitions_by_word, priors_per_word, observations_per_word
+end
+
+function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_transitions_by_word, priors_per_word, observations_per_word )
+	-- Iterate over sentence, accumulate only for words we want to learn
+	for i,w in ipairs(self.positionToWord) do
+		if state_transitions_by_word[w] ~= nil then
+			local first_state = p[self.numRoles + i]
+			local second_state = q[self.numRoles + i]
+
+			-- Accumulate state transitions
+			state_transitions_by_word[w][first_state][second_state] = state_transitions_by_word[w][first_state][second_state] + posterior
+
+
+			-- Accumulate observations
+			local detections = {}
+			for j,r in ipairs(self.positionToRoles[i]) do
+				detections[j] = p[r]
+			end
+
+			local obs_key = self.words[w]:getKey(first_state, frameIndx, detections)
+			if observations_per_word[w][obs_key] ~= nil then
+				observations_per_word[w][obs_key] = observations_per_word[w][obs_key] + posterior
+			else
+				observations_per_word[w][obs_key] = posterior
+			end
+
+
+			-- If it's the first frame, accumulate state priors
+			if frameIndx == 1 then
+				priors_per_word[w][first_state] = priors_per_word[w][first_state] + posterior
+			end
+
+
+			-- If it's the last frame, accumulate observations for second state
+			if frameIndx == self.detectionsByFrame:size(1) - 1 then
+				local detections = {}
+				for j,r in ipairs(self.positionToRoles[i]) do
+					detections[j] = q[r]
+				end
+
+				local obs_key = self.words[w]:getKey(second_state, frameIndx+1, detections)
+				if observations_per_word[w][obs_key] ~= nil then
+					observations_per_word[w][obs_key] = observations_per_word[w][obs_key] + posterior
+				else
+					observations_per_word[w][obs_key] = posterior
+				end
+			end
+
+		end
+	end
+
+	return state_transitions_by_word, priors_per_word, observations_per_word
+end
+
+function SentenceTracker:initSummaryStatistics( words_to_learn )
+	local state_transitions_by_word = {}
+	local priors_per_word = {}
+	local observations_per_word = {}
+
+	for i = 1, #words_to_learn do
+		local w = words_to_learn[i]
+		state_transitions_by_word[w] = torch.zeros(self.words[w].stateTransitions:size())
+		priors_per_word[w] = torch.zeros(self.words[w].statePriors:size())
+		observations_per_word[w] = {}
+	end
+
+	return state_transitions_by_word, priors_per_word, observations_per_word
 end
 
 function SentenceTracker:logTotalProbabilityOfSequence()
