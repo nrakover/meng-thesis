@@ -41,8 +41,6 @@ function SentenceTracker:processVideo(video_detections_path, video_features_path
 end
 
 function SentenceTracker:parseSentence(sentence)
-	-- TODO: generalize to more than one word
-
 	self.positionToWord = {}
 	self.positionToRoles = {}
 	self.numRoles = 0
@@ -57,8 +55,6 @@ function SentenceTracker:parseSentence(sentence)
 			end
 		end
 	end
-
-	self.wordToRole = {[1]=1}	-- for now, sentence is a single word
 end
 
 function SentenceTracker:buildWordModels(word_models)
@@ -101,7 +97,90 @@ function SentenceTracker:getBestPath()
 	return bestPath, bestScore
 end
 
-function SentenceTracker:PI(k, v)
+function SentenceTracker:partialEStep( words_to_learn )
+	-- Initialize memo tables
+	self.alphaMemo = {}
+	self.betaMemo = {}
+
+end
+
+function SentenceTracker:logAlpha( k, v )
+	-- Use this to index into memo table
+	local key = self:getKey(k,v)
+
+	-- Check if value is memoized
+	if self.alphaMemo[key] ~= nil then
+		return self.alphaMemo[key]
+	end
+
+	-- Base Case:
+	if k == 1 then
+		-- Word prior scores
+		local loglikelihood = self:computeWordsPriorScore( v )
+		-- Memoize and return
+		self.alphaMemo[key] = loglikelihood
+		return loglikelihood
+	end
+
+	-- Recursive Case:
+	local marginal_likelihood = 0
+	-- Iterate over possibe previous nodes
+	local u = self:startNode()
+	while u ~= nil do
+		local transitions_ll = self:computeTracksTransitionScore( k, u, v ) + self:computeWordsTransitionScore( k, u, v )
+		local observations_ll = self:computeTracksObservationScore( k-1, u ) + self:computeWordsObservationScore( k-1, u )
+		local ll_for_u = self:logAlpha( k-1, u) + transitions_ll + observations_ll
+
+		-- Accumulate
+		marginal_likelihood = marginal_likelihood + math.exp(ll_for_u)
+		-- Next node
+		u = self:nextNode(u)
+	end
+
+	-- Memoize and return
+	self.alphaMemo[key] = math.log(marginal_likelihood)
+	return math.log(marginal_likelihood)
+
+end
+
+function SentenceTracker:logBeta( k, v )
+	-- Use this to index into memo table
+	local key = self:getKey(k,v)
+
+	-- Check if value is memoized
+	if self.betaMemo[key] ~= nil then
+		return self.betaMemo[key]
+	end
+
+	-- Base Case:
+	if k == self.detectionsByFrame:size(1) then
+		local loglikelihood = self:computeTracksObservationScore( k, v ) + self:computeWordsObservationScore( k, v )
+		-- Memoize and return
+		self.betaMemo[key] = loglikelihood
+		return loglikelihood
+	end
+
+	-- Recursive Case:
+	local marginal_likelihood = 0
+	-- Iterate over possibe previous nodes
+	local u = self:startNode()
+	while u ~= nil do
+		local transitions_ll = self:computeTracksTransitionScore( k+1, v, u ) + self:computeWordsTransitionScore( k+1, v, u )
+		local observations_ll = self:computeTracksObservationScore( k, v ) + self:computeWordsObservationScore( k, v )
+		local ll_for_u = self:logBeta( k+1, u) + transitions_ll + observations_ll
+
+		-- Accumulate
+		marginal_likelihood = marginal_likelihood + math.exp(ll_for_u)
+		-- Next node
+		u = self:nextNode(u)
+	end
+
+	-- Memoize and return
+	self.betaMemo[key] = math.log(marginal_likelihood)
+	return math.log(marginal_likelihood)
+end
+
+function SentenceTracker:PI( k, v )
 	-- Use this to index into memo table
 	local key = self:getKey(k,v)
 
