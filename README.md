@@ -1,13 +1,10 @@
 
 # TODOs
 
-##Immediate goals:
-1. track single word [11/6]
+1. track single word [DONE]
 	* noun
 	* adjective
-2. track two word phrase [11/9]
-3. track three word phrase [11/12]
-
-
-##Short-term goals:
-1. track arbitrary sentence [11/19]
+2. track two-word single-target [DONE]
+3. learn single-argument verb
+4. learn two-argument verb
+5. track single-argument and two-argument verbs
