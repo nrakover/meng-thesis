@@ -102,6 +102,42 @@ function SentenceTracker:partialEStep( words_to_learn )
 	self.alphaMemo = {}
 	self.betaMemo = {}
 
+	-- Compute total log probability of the sequence
+	local Z = self:logTotalProbabilityOfSequence()
+
+	-- Iterate over frames
+	for frameIndx = 1, self.detectionsByFrame:size(1) - 1 do
+		-- Iterate over the first node
+		local p = self:startNode()
+		while p ~= nil do
+			-- Iterate over the second node
+			local q = self:startNode()
+			while q ~= nil do
+				-- Compute adjacent node posteriors
+				local transitions_ll = self:computeTracksTransitionScore( frameIndx+1, p, q ) + self:computeWordsTransitionScore( frameIndx+1, p, q )
+				local observations_ll = self:computeTracksObservationScore( frameIndx, p ) + self:computeWordsObservationScore( frameIndx, p )
+				local log_posterior_p_to_q = ( self:logAlpha(frameIndx, p) + transitions_ll + observations_ll + self:logBeta(frameIndx+1, q) ) - Z
+
+				-- TODO: do the stuff with the posterior
+
+				-- Next node
+				q = self:nextNode(q)
+			end
+
+			-- Next node
+			p = self:nextNode(p)
+		end
+end
+
+function SentenceTracker:logTotalProbabilityOfSequence()
+	local Z = 0
+	local p = self:startNode()
+	while p ~= nil do
+		Z = Z + math.exp( self:logAlpha(1,p) + self:logBeta(1,p) )
+		-- Next node
+		p = self:nextNode(p)
+	end
+	return math.log(Z)
 end
 
 function SentenceTracker:logAlpha( k, v )
