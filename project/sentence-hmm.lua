@@ -132,6 +132,9 @@ function SentenceTracker:partialEStep( words_to_learn )
 			p = self:nextNode(p)
 		end
 
+		print('Done with frame '..frameIndx)
+	end
+
 	return state_transitions_by_word, priors_per_word, observations_per_word
 end
 

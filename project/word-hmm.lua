@@ -53,7 +53,7 @@ function Word:setMemoTables()
 end
 
 function Word:getKey(state, frame, detections)
-	local key = (''..state)..':'..frame
+	local key = (''..state)..(':'..frame)..':'
 	for i = 1, #detections do
 		key = (key..detections[i])..'_'
 	end
