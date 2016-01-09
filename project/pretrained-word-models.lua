@@ -11,7 +11,7 @@ function getClassifier(dataset)
 	-- local classifier = liblinear.train(train_full, '-s 0 -q');
 	-- local labels,accuracy,prob = liblinear.predict(train_full, classifier, '-b 1');
 
-	local classifier = trainLinearModel(training_data.data, training_data.label)
+	local classifier = trainLinearModel(training_data.data, training_data.label, nil, true)
 
 	return classifier
 end

@@ -54,6 +54,7 @@ function trainLinearModel( examples, labels, weights, verbose )
 	for epoch = 1, max_epochs do
 		local lr = 0.01 / epoch
 		local total_err = 0
+		local total_weight = 0
 
 		local indices_permutation = permute(indices) -- randomize examples for robustness
 		for i = 1, #examples do
@@ -63,10 +64,11 @@ function trainLinearModel( examples, labels, weights, verbose )
 			local target = labels[indx]
 			local w = weights[indx]
 
-			total_err = total_err + gradUpdate(model, x, torch.DoubleTensor({target}), criterion, w, lr)
+			total_err = total_err + w*gradUpdate(model, x, torch.DoubleTensor({target}), criterion, w, lr)
+			total_weight = total_weight + w
 		end
 
-		local avg_err = total_err / #examples
+		local avg_err = total_err / total_weight
 		if math.abs(avg_err - prev_err) < exit_threshold then break end
 
 		if verbose then 
@@ -76,7 +78,7 @@ function trainLinearModel( examples, labels, weights, verbose )
 	end
 
 	-- Print out accuracy on training set
-	local acc = scoreTestSet( model, examples, labels:double() )
+	local acc = scoreTestSet( model, examples, labels:double(), weights )
 	print('Training set accuracy = '..acc)
 
 	return model
@@ -110,15 +112,19 @@ function predictLabels( model, examples )
 	return torch.Tensor(predictions)
 end
 
-function scoreTestSet( model, examples, targets )
+function scoreTestSet( model, examples, targets, weights )
+	weights = weights or torch.ones(#examples)
+
 	local predictions = predictLabels( model, examples )
-	local num_true_preds = 0
+	local true_preds = 0
+	local total_weight = 0
 	for i = 1, #examples do
 		if predictions[i] == targets[i] then
-			num_true_preds = num_true_preds + 1
+			true_preds = true_preds + weights[i]
 		end
+		total_weight = total_weight + weights[i]
 	end
-	return num_true_preds / #examples
+	return true_preds / total_weight
 end
 
 
