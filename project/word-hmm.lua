@@ -1,7 +1,8 @@
 require 'torch'
-require 'svm'
+require 'nn'
+-- require 'svm'
 
-dofile('/local/nrakover/meng/data-to-svmlight.lua');
+-- dofile('/local/nrakover/meng/data-to-svmlight.lua');
 
 Word = {}
 
@@ -28,14 +29,16 @@ function Word:probOfEmission(state, frameIndx, detections)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone(), 1)
 	end
 
-	local formatted_features = t7ToSvmlight({[1]=stacked_features_for_detections}, torch.ones(1))
+	-- local formatted_features = t7ToSvmlight({[1]=stacked_features_for_detections}, torch.ones(1))
 
-	local labels,accuracy,prob = liblinear.predict(formatted_features, self.emissionModels[state], '-b 1 -q')
+	-- local labels,accuracy,prob = liblinear.predict(formatted_features, self.emissionModels[state], '-b 1 -q')
+	local prob = self.emissionModels[state]:forward(torch.squeeze(stacked_features_for_detections):double())
 	
 	-- memoize
-	local positive_class_indx = 1
-	if self.emissionModels[state].label[2] == 1 then positive_class_indx = 2 end
-	self.memo[key] = prob[1][positive_class_indx]
+	self.memo[key] = prob[1]
+	-- local positive_class_indx = 1
+	-- if self.emissionModels[state].label[2] == 1 then positive_class_indx = 2 end
+	-- self.memo[key] = prob[1][positive_class_indx]
 
 	return self.memo[key]
 end
