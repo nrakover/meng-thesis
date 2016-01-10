@@ -14,4 +14,4 @@
 5. track single-argument and two-argument verbs
 
 ## Misc TODOs
-1. use distance transform to speed up optical flow averaging
+1. ~~use distance transform to speed up optical flow averaging~~
