@@ -37,15 +37,10 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	if y_max == y_min then y_max = y_max + 1 end
 	if x_max == x_min then x_max = x_max + 1 end
 
-	-- Get optical flow
-	local flow_x_region = image.crop(self.detectionsOptFlow[frameIndx].flow_x, x_min, y_min, x_max, y_max)
-	local flow_y_region = image.crop(self.detectionsOptFlow[frameIndx].flow_y, x_min, y_min, x_max, y_max)
-
-	-- Compute summary of flow field
-	local G = (image.gaussian{height=flow_x_region:size(2), width=flow_x_region:size(3)}):float()  -- 2D-gaussian kernel for weighted average
-	local avg_flow_x = torch.conv2(torch.squeeze(flow_x_region,1), G)/G:sum()
-	local avg_flow_y = torch.conv2(torch.squeeze(flow_y_region,1), G)/G:sum()
-	local avg_flow = torch.Tensor( { avg_flow_x[1][1] , avg_flow_y[1][1] } )
+	-- Get average flow from region
+	local avg_flow_x = self:extractAvgFlowFromDistanceTransform(self.detectionsOptFlow[frameIndx].flow_x, x_min, y_min, x_max, y_max)
+	local avg_flow_y = self:extractAvgFlowFromDistanceTransform(self.detectionsOptFlow[frameIndx].flow_y, x_min, y_min, x_max, y_max)
+	local avg_flow = torch.Tensor( { avg_flow_x, avg_flow_y } )
 
 	-- Project current detection's center
 	local projected_center = torch.Tensor( {(x_max+x_min)/2, (y_max+y_min)/2} ) - avg_flow
@@ -67,7 +62,7 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	-- Negative Euclidean distance between previous detection's center and backprojected center
 	local d = torch.dist(projected_center, prev_center)
 	-- Normalize the distance into [0,1]
-	local max_d = torch.dist( torch.Tensor({1,1}), torch.Tensor({self.detectionsOptFlow[frameIndx].flow_x:size(2), self.detectionsOptFlow[frameIndx].flow_x:size(3)}) )
+	local max_d = torch.dist( torch.Tensor({1,1}), torch.Tensor({self.detectionsOptFlow[frameIndx].flow_x:size(1), self.detectionsOptFlow[frameIndx].flow_x:size(2)}) )
 	local score = math.log( 1 - (d / max_d) )
 
 	-- Memoize
@@ -81,3 +76,13 @@ function Tracker:setMemoTables()
 		self.memo[t] = torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1))
 	end
 end
+
+function Tracker:extractAvgFlowFromDistanceTransform(flow_field, x_min, y_min, x_max, y_max)
+	local flow_sum = flow_field[y_max][x_max] - flow_field[y_min][x_max] - flow_field[y_max][x_min] + flow_field[y_min][x_min]
+	local area = (y_max-y_min) * (x_max-x_min)
+	return flow_sum / area
+end
+
+
+
+

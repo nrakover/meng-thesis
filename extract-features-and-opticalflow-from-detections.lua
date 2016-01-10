@@ -1,6 +1,7 @@
 require 'torch'
 require 'nn'
 require 'ffmpeg'
+require 'liuflow'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 require 'loadcaffe'
@@ -9,8 +10,29 @@ local matio = require 'matio'
 matio.use_lua_strings = true
 
 dofile('load-and-process-img.lua')
-dofile('torch-libs/lua---liuflow/init.lua')
 
+function distanceTransform( A )
+	-- Transformed field
+	local B = torch.FloatTensor(A:size())
+	
+	-- Base case
+	B[1][1] = A[1][1]
+	-- Leftmost column
+	for i = 2, A:size(1) do
+		B[i][1] = B[i-1][1] + A[i][1]
+	end
+	-- Top row
+	for j = 2, A:size(2) do
+		B[1][j] = B[1][j-1] + A[1][j]
+	end
+	-- Inner grid
+	for i = 2, A:size(1) do
+		for j = 2, A:size(2) do
+			B[i][j] = B[i-1][j] + B[i][j-1] - B[i-1][j-1] + A[i][j]
+		end
+	end
+	return B
+end
 
 function normalizeImage(im)
 	local mean_img = torch.FloatTensor(im:size())
@@ -31,7 +53,7 @@ function extractFeatures(img, net)
 	return nn.View(1):forward(features)
 end
 
-local net = loadcaffe.load('/afs/csail.mit.edu/u/n/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', '/afs/csail.mit.edu/u/n/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
+local net = loadcaffe.load('networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', 'networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
 
 function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	local w = detectionsByFrame.width[1][1]
@@ -58,7 +80,7 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 
 			print('Optical flow computed for frame '..frameIndx)
 
-			opticalflowByFrame[frameIndx] = {flow_x=fx:clone(), flow_y=fy:clone()}
+			opticalflowByFrame[frameIndx] = {flow_x=distanceTransform(torch.squeeze(fx)), flow_y=distanceTransform(torch.squeeze(fy))}
 		end
 		
 		-- Iterate over detections
@@ -92,10 +114,10 @@ end
 
 
 -- Run on test data
-local detectionsByFrame = matio.load('project/test/nico_small.mat' , 'detections_by_frame')
-local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'project/test/nico_small.avi')
+-- local detectionsByFrame = matio.load('script_in/yellow-white-cars.mat' , 'detections_by_frame')
+-- local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'script_in/yellow-white-cars.avi')
 
-torch.save('project/test/nico_small_features.t7', features)
-torch.save('project/test/nico_small_opticalflow.t7', opticalflow)
+-- torch.save('script_in/yellow-white-cars_features.t7', features)
+-- torch.save('script_in/yellow-white-cars_opticalflow.t7', opticalflow)
 
 
