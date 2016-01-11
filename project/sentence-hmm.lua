@@ -60,7 +60,7 @@ end
 function SentenceTracker:buildWordModels(word_models)
 	self.words = {}
 	for word,model in pairs(word_models) do
-		self.words[word] = Word:new(model.emissions, model.transitions, model.priors, self.detectionsByFrame, self.detectionFeatures)
+		self.words[word] = Word:new(model.emissions, model.transitions, model.priors, self.detectionsByFrame, self.detectionFeatures, self.detectionsOptFlow)
 	end
 end
 
