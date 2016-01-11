@@ -156,10 +156,11 @@ function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_
 			end
 
 			local obs_key = self.words[w]:getKey(first_state, frameIndx, detections)
-			if observations_per_word[w][obs_key] ~= nil then
-				observations_per_word[w][obs_key] = observations_per_word[w][obs_key] + posterior
+			if observations_per_word[w][first_state][obs_key] == nil then
+				local observation_features = self.words[w]:extractFeatures( frameIndx, detections )
+				observations_per_word[w][first_state][obs_key] = {example=observation_features, weight=posterior}
 			else
-				observations_per_word[w][obs_key] = posterior
+				observations_per_word[w][first_state][obs_key].weight = observations_per_word[w][first_state][obs_key].weight + posterior
 			end
 
 
@@ -177,10 +178,11 @@ function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_
 				end
 
 				local obs_key = self.words[w]:getKey(second_state, frameIndx+1, detections)
-				if observations_per_word[w][obs_key] ~= nil then
-					observations_per_word[w][obs_key] = observations_per_word[w][obs_key] + posterior
+				if observations_per_word[w][second_state][obs_key] == nil then
+					local observation_features = self.words[w]:extractFeatures( frameIndx, detections )
+					observations_per_word[w][second_state][obs_key] = {example=observation_features, weight=posterior}
 				else
-					observations_per_word[w][obs_key] = posterior
+					observations_per_word[w][second_state][obs_key].weight = observations_per_word[w][second_state][obs_key].weight + posterior
 				end
 			end
 
@@ -200,6 +202,9 @@ function SentenceTracker:initSummaryStatistics( words_to_learn )
 		state_transitions_by_word[w] = torch.zeros(self.words[w].stateTransitions:size())
 		priors_per_word[w] = torch.zeros(self.words[w].statePriors:size())
 		observations_per_word[w] = {}
+		for state = 1, self.words[w].statePriors:size(1) do
+			observations_per_word[w][state] = {}
+		end
 	end
 
 	return state_transitions_by_word, priors_per_word, observations_per_word
