@@ -7,9 +7,9 @@
 2. ~~track two-word single-target~~ [DONE]
 3. learn two-argument verb
 	* ~~migrate from TorchSVM to NN~~
-	* add features for verbs (location, flow field, etc.)
+	* ~~add features for verbs (location, flow field, etc.)~~
 	* prepare data for learning
-	* implement M-step
+	* ~~implement M-step~~
 4. learn single-argument verb
 5. track single-argument and two-argument verbs
 
