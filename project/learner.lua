@@ -69,19 +69,34 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 
 		-- Only compute models for words we mean to learn
 		if words_to_learn[w] ~= nil then
+
 			-- Compute the transition probabilities
+			-- ####################################
 			local state_transition_counts = state_transitions_by_word[w]
 			local new_state_transitions = torch.FloatTensor(state_transition_counts:size())
 			for p = 1, new_state_transitions:size(1) do
-				local total_mass = state_transition_counts[{{p},{}}]:sum()
-				new_state_transitions[{{p},{}}] = state_transition_counts[{{p},{}}] / total_mass
+				local transition_counts_from_p = state_transition_counts[{{p},{}}]
+				-- Offset all counts if there are negative counts
+				if transition_counts_from_p:min() < 0 then
+					transition_counts_from_p = transition_counts_from_p - transition_counts_from_p:min()
+				end
+				-- Normalize
+				local total_mass = transition_counts_from_p:sum()
+				new_state_transitions[{{p},{}}] = transition_counts_from_p / total_mass
 			end
 
 			-- Compute the state priors
+			-- ####################################
 			local state_priors_counts = priors_per_word[w]
+			-- Offset counts if there are negative counts
+			if state_priors_counts:min() < 0 then
+				state_priors_counts = state_priors_counts - state_priors_counts:min()
+			end
+			-- Normalize
 			local new_state_priors = state_priors_counts / state_priors_counts:sum()
 
 			-- Compute the emissions models
+			-- ####################################
 			local new_emissions_models = {}
 			for state = 1, state_priors_counts:size(1) do
 				new_emissions_models[state] = trainLinearModel(observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), observations_per_word[w][state].weights, true)
