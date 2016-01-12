@@ -9,7 +9,7 @@ require 'loadcaffe'
 local matio = require 'matio'
 matio.use_lua_strings = true
 
-dofile('load-and-process-img.lua')
+dofile('/local/nrakover/meng/load-and-process-img.lua')
 
 function distanceTransform( A )
 	-- Transformed field
@@ -53,7 +53,7 @@ function extractFeatures(img, net)
 	return nn.View(1):forward(features)
 end
 
-local net = loadcaffe.load('networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', 'networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
+local net = loadcaffe.load('/local/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', '/local/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
 
 function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	local w = detectionsByFrame.width[1][1]

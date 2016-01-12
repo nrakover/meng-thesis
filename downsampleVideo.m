@@ -9,7 +9,7 @@ open(outputVideo);
 fCount = 1;
 while hasFrame(vid)
    f = readFrame(vid);
-   if mod(fCount, skipNum) == 1
+   if mod(fCount, skipNum) == 0
        writeVideo(outputVideo,imresize(f,sizeDownsampleRate));
    end
    fCount = fCount + 1;
