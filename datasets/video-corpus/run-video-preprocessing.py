@@ -2,10 +2,12 @@ import matlab.engine
 import os
 
 SOURCE_DIR = '/local/nrakover/meng/datasets/video-corpus/20121214-new3-corpus/'
-DESTINATION_DIR = '/local/nrakover/meng/datasets/video-corpus/preprocessed-videos/'
 
 
 def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate, size_downsample_rate, num_proposals):
+	'''
+	IMPORTANT: this MUST be run from /local/nrakover/meng/objectness/object-proposals/
+	'''
 	eng = matlab.engine.start_matlab()
 
 	eng.initialize(nargout=0)
@@ -29,4 +31,5 @@ def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate,
 	eng.quit()
 
 
-doAllMATLABPreprocessing(SOURCE_DIR, DESTINATION_DIR, 1.0, 0.75, 250)
+doAllMATLABPreprocessing(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/videos_272x192_all-frames_75-proposals/', 1, 0.4, 75)
+

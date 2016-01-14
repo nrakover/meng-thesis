@@ -114,8 +114,8 @@ end
 
 
 -- Run on test data
--- local detectionsByFrame = matio.load('script_in/yellow-white-cars.mat' , 'detections_by_frame')
--- local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'script_in/yellow-white-cars.avi')
+-- local detectionsByFrame = matio.load('datasets/video-corpus/preprocessed-videos/MVI_0882/detections.mat' , 'detections_by_frame')
+-- local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'datasets/video-corpus/preprocessed-videos/MVI_0882/video.avi')
 
 -- torch.save('script_in/yellow-white-cars_features.t7', features)
 -- torch.save('script_in/yellow-white-cars_opticalflow.t7', opticalflow)

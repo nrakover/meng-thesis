@@ -1,7 +1,6 @@
 import os
 
 
-DESTINATION_DIR = 'preprocessed-videos/'
 SOURCE_DIR = '20121214-new3-corpus/'
 
 
@@ -16,4 +15,4 @@ def generateDirectoryForEachVideo(source, destination):
 			if not os.path.exists(new_dir_path):
 				os.makedirs(new_dir_path)
 
-generateDirectoryForEachVideo(SOURCE_DIR, DESTINATION_DIR)
+generateDirectoryForEachVideo(SOURCE_DIR, 'videos_272x192_all-frames_75-proposals/')
