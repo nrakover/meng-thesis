@@ -135,7 +135,7 @@ function SentenceTracker:partialEStep( words_to_learn )
 		print('Done with frame '..frameIndx)
 	end
 
-	return state_transitions_by_word, priors_per_word, observations_per_word
+	return state_transitions_by_word, priors_per_word, observations_per_word, Z
 end
 
 function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_transitions_by_word, priors_per_word, observations_per_word )

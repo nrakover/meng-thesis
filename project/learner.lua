@@ -14,26 +14,32 @@ function WordLearner:learnWords( words_to_learn, videos, sentences, labels, init
 	for iter = 1, maxIters do
 
 		-- E-Step: calculate posteriors
-		local state_transitions_by_word, priors_per_word, observations_per_word = self:EStep( words_to_learn, videos, sentences, labels, current_word_models )
+		local state_transitions_by_word, priors_per_word, observations_per_word, loglikelihood = self:EStep( words_to_learn, videos, sentences, labels, current_word_models )
+
+		-- Report loglikelihood of current models
+		print(('Iteration '..iter)..' loglikelihood: '..loglikelihood)
 
 		-- M-Step: re-estimate word models
 		current_word_models = self:MStep( current_word_models, words_to_learn, videos, labels, state_transitions_by_word, priors_per_word, observations_per_word )
 	end
 
-	return learned_word_models
+	return current_word_models
 end
 
 
 function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_word_models )
 	local state_transitions_by_word, priors_per_word, observations_per_word = self:initSummaryStatistics( words_to_learn, current_word_models )
+	local loglikelihood = 0
 
 	-- Iterate over examples
 	for i = 1, #videos do
 		-- Instantiate sentence tracker
-		local sentence_tracker = -- TODO: implement	$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+		local sentence = sentences[i]
+		local video = videos[i]
+		local sentence_tracker = SentenceTracker:new(sentence, video.detections_path, video.features_path, video.opticalflow_path, current_word_models)
 
 		-- Get posteriors for the example
-		local trans, priors, obs = sentence_tracker:partialEStep( words_to_learn )
+		local trans, priors, obs, ll = sentence_tracker:partialEStep( words_to_learn )
 
 		-- Aggregate
 		for j = 1, #words_to_learn do
@@ -56,9 +62,12 @@ function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_w
 				end
 			end
 		end
+
+		-- Accumulate loglikelihood
+		loglikelihood = loglikelihood + ll
 	end
 
-	return state_transitions_by_word, priors_per_word, observations_per_word
+	return state_transitions_by_word, priors_per_word, observations_per_word, loglikelihood
 end
 
 function WordLearner:MStep( current_word_models, words_to_learn, videos, labels, state_transitions_by_word, priors_per_word, observations_per_word )
