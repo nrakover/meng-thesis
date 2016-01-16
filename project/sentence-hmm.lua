@@ -9,16 +9,17 @@ dofile('/local/nrakover/meng/project/word-hmm.lua')
 
 SentenceTracker = {}
 
-function SentenceTracker:new(sentence, video_detections_path, video_features_path, video_optflow_path, word_models)
+function SentenceTracker:new(sentence, video_detections_path, video_features_path, video_optflow_path, word_models, filter_detections, words_to_filter_by)
 	local newObj = {}
 	self.__index = self
 	newObj = setmetatable(newObj, self)
 
-	-- Process video
-	newObj:processVideo(video_detections_path, video_features_path, video_optflow_path)
-
 	-- Parse sentence
 	newObj:parseSentence(sentence)
+
+	-- Process video
+	filter_detections = filter_detections or false
+	newObj:processVideo(video_detections_path, video_features_path, video_optflow_path, filter_detections, word_models, words_to_filter_by)
 
 	-- Initialize tracker
 	newObj.tracker = Tracker:new(newObj.detectionsByFrame, newObj.detectionsOptFlow)
@@ -29,15 +30,66 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 	return newObj
 end
 
-function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path)
+function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path, filter_detections, word_models, words_to_filter_by)
 	-- Load the detection proposals
-	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame').detections
+	self.detectionsByFrame = self:detectionsTensorToTable( matio.load(video_detections_path , 'detections_by_frame').detections )
+	self.numFrames = #self.detectionsByFrame
+
+	-- Load the neural network features from proposals
+	self.detectionFeatures = torch.load(video_features_path)
+
+	if filter_detections then
+		self.detectionsByFrame, self.detectionFeatures = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, word_models, words_to_filter_by, 4)
+	end
 
 	-- Load the optical flow for each frame
 	self.detectionsOptFlow = torch.load(video_optflow_path)
 
-	-- Load the neural network features from proposals
-	self.detectionFeatures = torch.load(video_features_path)
+end
+
+function SentenceTracker:filterDetections( all_detections_by_frame, all_features, word_models, words_to_filter_by, K )
+	local filtered_detections = {}
+	local filtered_features = {}
+
+	-- For each frame, select the best detections
+	for fIndx = 1, #all_detections_by_frame do
+
+		local scores_by_role = torch.Tensor(self.numRoles, #all_detections_by_frame[fIndx])
+		-- Iterate over detections
+		for detIndx = 1, #all_detections_by_frame[fIndx] do
+			local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
+
+			-- Score the detection
+			for i,w in ipairs(self.positionToWord) do
+				-- Only filter by 1-state words that take a single argument
+				if #self.positionToRoles[i] == 1 and words_to_filter_by[w] ~= nil and word_models[w] ~= nil and word_models[w].priors:size(1) == 1 then
+					local ll = math.log(word_models[w].emissions[1]:forward(features)[1])
+					scores_by_role[self.positionToRoles[i][1]][detIndx] = scores_by_role[self.positionToRoles[i][1]][detIndx] + ll
+				end
+			end
+		end
+
+		filtered_detections[fIndx] = {}
+		filtered_features[fIndx] = {}
+		local detections_included = {}
+		-- Select the best set per role
+		for r = 1, scores_by_role:size(1) do
+			-- Sort in descending order along the 2nd dimension
+			local _, sorted_indices = torch.sort(scores_by_role[{{r},{}}], 2, true)
+
+			-- Take the top K detections
+			for i = 1, K do
+				local detIndx = sorted_indices[1][i]
+				if detections_included[detIndx] == nil then -- prevents repeated detections
+					detections_included[detIndx] = true
+					table.insert(filtered_detections[fIndx], all_detections_by_frame[fIndx][detIndx])
+					table.insert(filtered_features[fIndx], all_features[fIndx][detIndx])
+				end
+			end
+		end
+	end
+
+	return filtered_detections, filtered_features
 end
 
 function SentenceTracker:parseSentence(sentence)
@@ -80,17 +132,16 @@ end
 function SentenceTracker:getBestPath()
 	self:setPIMemoTable()
 
-	local numFrames = self.detectionsByFrame:size(1)
 	local v = self:startNode()
 	local bestScore = nil
 	local bestPath = nil
 	while v ~= nil do
-		local piResult = self:PI(numFrames, v)
+		local piResult = self:PI(self.numFrames, v)
 		if bestScore == nil or piResult.score > bestScore then
 			bestScore = piResult.score
 			bestPath = piResult.path
 		end
-		v = self:nextNode(v)
+		v = self:nextNode(self.numFrames, v)
 	end
 
 	print('==> FINISHED')
@@ -109,7 +160,7 @@ function SentenceTracker:partialEStep( words_to_learn )
 	local Z = self:logTotalProbabilityOfSequence()
 
 	-- Iterate over frames
-	for frameIndx = 1, self.detectionsByFrame:size(1) - 1 do
+	for frameIndx = 1, self.numFrames - 1 do
 		-- Iterate over the first node
 		local p = self:startNode()
 		while p ~= nil do
@@ -125,11 +176,11 @@ function SentenceTracker:partialEStep( words_to_learn )
 				state_transitions_by_word, priors_per_word, observations_per_word = self:accumulatePosterior( posterior_p_to_q, frameIndx, p, q, state_transitions_by_word, priors_per_word, observations_per_word )
 
 				-- Next node
-				q = self:nextNode(q)
+				q = self:nextNode(frameIndx+1, q)
 			end
 
 			-- Next node
-			p = self:nextNode(p)
+			p = self:nextNode(frameIndx, p)
 		end
 
 		print('Done with frame '..frameIndx)
@@ -171,7 +222,7 @@ function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_
 
 
 			-- If it's the last frame, accumulate observations for second state
-			if frameIndx == self.detectionsByFrame:size(1) - 1 then
+			if frameIndx == self.numFrames - 1 then
 				local detections = {}
 				for j,r in ipairs(self.positionToRoles[i]) do
 					detections[j] = q[r]
@@ -179,7 +230,7 @@ function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_
 
 				local obs_key = self.words[w]:getKey(second_state, frameIndx+1, detections)
 				if observations_per_word[w][second_state][obs_key] == nil then
-					local observation_features = self.words[w]:extractFeatures( frameIndx, detections )
+					local observation_features = self.words[w]:extractFeatures( frameIndx+1, detections )
 					observations_per_word[w][second_state][obs_key] = {example=observation_features, weight=posterior}
 				else
 					observations_per_word[w][second_state][obs_key].weight = observations_per_word[w][second_state][obs_key].weight + posterior
@@ -216,7 +267,7 @@ function SentenceTracker:logTotalProbabilityOfSequence()
 	while p ~= nil do
 		Z = Z + math.exp( self:logAlpha(1,p) + self:logBeta(1,p) )
 		-- Next node
-		p = self:nextNode(p)
+		p = self:nextNode(1,p)
 	end
 	return math.log(Z)
 end
@@ -251,7 +302,7 @@ function SentenceTracker:logAlpha( k, v )
 		-- Accumulate
 		marginal_likelihood = marginal_likelihood + math.exp(ll_for_u)
 		-- Next node
-		u = self:nextNode(u)
+		u = self:nextNode(k-1, u)
 	end
 
 	-- Memoize and return
@@ -270,7 +321,7 @@ function SentenceTracker:logBeta( k, v )
 	end
 
 	-- Base Case:
-	if k == self.detectionsByFrame:size(1) then
+	if k == self.numFrames then
 		local loglikelihood = self:computeTracksObservationScore( k, v ) + self:computeWordsObservationScore( k, v )
 		-- Memoize and return
 		self.betaMemo[key] = loglikelihood
@@ -279,7 +330,7 @@ function SentenceTracker:logBeta( k, v )
 
 	-- Recursive Case:
 	local marginal_likelihood = 0
-	-- Iterate over possibe previous nodes
+	-- Iterate over possibe next nodes
 	local u = self:startNode()
 	while u ~= nil do
 		local transitions_ll = self:computeTracksTransitionScore( k+1, v, u ) + self:computeWordsTransitionScore( k+1, v, u )
@@ -289,7 +340,7 @@ function SentenceTracker:logBeta( k, v )
 		-- Accumulate
 		marginal_likelihood = marginal_likelihood + math.exp(ll_for_u)
 		-- Next node
-		u = self:nextNode(u)
+		u = self:nextNode(k+1, u)
 	end
 
 	-- Memoize and return
@@ -351,7 +402,7 @@ function SentenceTracker:PI( k, v )
 			end
 
 			-- Next node
-			u = self:nextNode(u)
+			u = self:nextNode(k-1, u)
 		end
 
 		scoreToReturn = tracksObservationScore + wordsObservationScore + bestTransitionScore
@@ -447,14 +498,14 @@ function SentenceTracker:startNode()
 	return node
 end
 
-function SentenceTracker:nextNode( node )
+function SentenceTracker:nextNode( frameIndx, node )
 	local nextNode = {}
 
 	local carry = 1
 	for i = #node, 1, -1 do
-		if node[i] == self:maxValueAt(i) and carry == 1 then
+		if node[i] == self:maxValueAt(frameIndx, i) and carry == 1 then
 			if i == 1 then return nil end
-			if self:maxValueAt(i) == 0 then
+			if self:maxValueAt(frameIndx, i) == 0 then
 				nextNode[i] = 0
 			else
 				nextNode[i] = 1
@@ -467,9 +518,9 @@ function SentenceTracker:nextNode( node )
 	return nextNode
 end
 
-function SentenceTracker:maxValueAt( i )
+function SentenceTracker:maxValueAt( frameIndx, i )
 	if i <= self.numRoles then
-		return self.detectionsByFrame:size(2)
+		return #self.detectionsByFrame[frameIndx]
 	else
 		local w = self.positionToWord[i - self.numRoles]
 		if self.words[w] ~= nil then
@@ -488,7 +539,16 @@ function SentenceTracker:getKey(k, v)
 	return key
 end
 
-
+function SentenceTracker:detectionsTensorToTable( detections_by_frame )
+	local detections_table = {}
+	for fIndx = 1, detections_by_frame:size(1) do
+		detections_table[fIndx] = {}
+		for detIndx = 1, detections_by_frame:size(2) do
+			detections_table[fIndx][detIndx] = detections_by_frame[fIndx][detIndx]:clone()
+		end
+	end
+	return detections_table
+end
 
 
 

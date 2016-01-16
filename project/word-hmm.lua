@@ -50,6 +50,7 @@ end
 
 function Word:setMemoTables()
 	self.memo = {}
+	self.featureExtractionMemo = {}
 end
 
 function Word:getKey(state, frame, detections)
@@ -61,7 +62,14 @@ function Word:getKey(state, frame, detections)
 end
 
 function Word:extractFeatures( frameIndx, detections )
-	local stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone()
+	local key = self:getKey(0,frameIndx,detections)
+
+	-- return memoized value if present
+	if self.featureExtractionMemo[key] ~= nil then
+		return self.featureExtractionMemo[key]
+	end
+
+	local stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double()
 	if #detections > 1 then
 		local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec, 1)
@@ -72,7 +80,7 @@ function Word:extractFeatures( frameIndx, detections )
 
 	for i = 2, #detections do
 		-- VGG features
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone(), 1)
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone():double(), 1)
 
 		-- Average optical flow vector
 		local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[i])
@@ -82,10 +90,18 @@ function Word:extractFeatures( frameIndx, detections )
 		local center = self:getNormalizedDetectionCenter(frameIndx, detections[i])
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center, 1)
 	end
-	return torch.squeeze(stacked_features_for_detections):double()
+	
+	self.featureExtractionMemo[key] = torch.squeeze(stacked_features_for_detections):double()
+	return self.featureExtractionMemo[key]
 end
 
 function Word:extractAvgFlowFromDistanceTransform( frameIndx, detectionIndx )
+
+	-- No motion information for first frame
+	if frameIndx == 1 then
+		return torch.zeros(2)
+	end
+
 	-- Get detection bounds
 	local x_min = self.detectionsByFrame[frameIndx][detectionIndx][1]
 	local y_min = self.detectionsByFrame[frameIndx][detectionIndx][2]
@@ -119,8 +135,8 @@ function Word:getNormalizedDetectionCenter( frameIndx, detectionIndx )
 	if x_max == x_min then x_max = x_max + 1 end
 
 	-- Get frame dimensions
-	local frame_width = self.framesOptFlow[frameIndx].flow_x:size(2)
-	local frame_height = self.framesOptFlow[frameIndx].flow_x:size(1)
+	local frame_width = self.framesOptFlow[2].flow_x:size(2)
+	local frame_height = self.framesOptFlow[2].flow_x:size(1)
 
 	return torch.Tensor({((x_max + x_min)/2)/frame_width, ((y_max + y_min)/2)/frame_height})
 end

@@ -61,18 +61,48 @@ local function getVideos(videos_dir, video_names)
 	return videos
 end
 
+local function initClassifier(num_arguments)
+	local NUM_INPUTS = 4096
+	if num_arguments > 1 then
+		NUM_INPUTS = (4096 + 2 + 2) * num_arguments
+	end
+	local classifier = nn.Sequential()
+	classifier:add(nn.Linear(NUM_INPUTS, 1)) -- linear regression layer
+	classifier:add(nn.Sigmoid()) -- signoid for squeezing into probability
+	return classifier
+end
+
+local function initKStateWord(num_arguments, K)
+	local classifiers = {}
+	for i = 1, K do
+		classifiers[i] = initClassifier(num_arguments)
+	end
+	return {emissions=classifiers, transitions=torch.FloatTensor(K,K), priors=torch.FloatTensor(K)}
+end
+
+
+
 local initial_word_models = {}
 initial_word_models['person'] = getPersonDetector()
+initial_word_models['trash_bin'] = getTrashbinDetector()
 initial_word_models['chair'] = getChairDetector()
+initial_word_models['backpack'] = getBackpackDetector()
 -- initial_word_models['car'] = getCarDetector()
+initial_word_models['black'] = getBlackDetector()
+-- initial_word_models['yellow'] = getYellowDetector()
+-- initial_word_models['white'] = getWhiteDetector()
 initial_word_models['blue'] = getBlueDetector()
 initial_word_models['red'] = getRedDetector()
 initial_word_models['gray'] = getGrayDetector()
--- initial_word_models['black'] = getBlackDetector()
--- initial_word_models['yellow'] = getYellowDetector()
--- initial_word_models['white'] = getWhiteDetector()
 
-local words_to_learn = {}
+local words_to_learn = {'approach'}
+initial_word_models['approach'] = initKStateWord(2, 3)
+
+words_to_filter_by = {}
+words_to_filter_by['person'] = true
+words_to_filter_by['trash_bin'] = true
+words_to_filter_by['chair'] = true
+words_to_filter_by['backpack'] = true
 
 local positive_sentences, positive_example_names = loadSentences('approach/positive_sentences.txt')
 local negative_sentences, negative_example_names = loadSentences('approach/negative_sentences.txt')
@@ -82,5 +112,5 @@ local example_names = concatTables(positive_example_names, negative_example_name
 local videos = getVideos('/local/nrakover/meng/datasets/video-corpus/videos_272x192_all-frames_75-proposals/', example_names)
 local labels = torch.cat(torch.ones(#positive_sentences), -torch.ones(#negative_sentences))
 
--- local learned_word_models = WordLearner:learnWords( words_to_learn, videos, sentences, labels, initial_word_models )
+local learned_word_models = WordLearner:learnWords( '/local/nrakover/meng/learn_approach/models', words_to_learn, videos, sentences, labels, initial_word_models, 10, true, words_to_filter_by )
 

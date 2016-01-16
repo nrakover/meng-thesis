@@ -72,8 +72,8 @@ end
 
 function Tracker:setMemoTables()
 	self.memo = {}
-	for t = 2, self.detectionsByFrame:size(1) do
-		self.memo[t] = torch.ones(self.detectionsByFrame[t-1]:size(1), self.detectionsByFrame[t]:size(1))
+	for t = 2, #self.detectionsByFrame do
+		self.memo[t] = torch.ones(#self.detectionsByFrame[t-1], #self.detectionsByFrame[t])
 	end
 end
 

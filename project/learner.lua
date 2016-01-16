@@ -5,7 +5,11 @@ dofile('/local/nrakover/meng/classifiers.lua')
 
 WordLearner = {}
 
-function WordLearner:learnWords( words_to_learn, videos, sentences, labels, initial_word_models, max_iterations )
+function WordLearner:learnWords( output_name, words_to_learn, videos, sentences, labels, initial_word_models, max_iterations, filter_detections, words_to_filter_by )
+
+	print('\nLearning words: ', words_to_learn)
+	print('\n')
+
 	local current_word_models = initial_word_models
 
 	local maxIters = max_iterations or 10
@@ -14,20 +18,23 @@ function WordLearner:learnWords( words_to_learn, videos, sentences, labels, init
 	for iter = 1, maxIters do
 
 		-- E-Step: calculate posteriors
-		local state_transitions_by_word, priors_per_word, observations_per_word, loglikelihood = self:EStep( words_to_learn, videos, sentences, labels, current_word_models )
+		local state_transitions_by_word, priors_per_word, observations_per_word, loglikelihood = self:EStep( words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
 
 		-- Report loglikelihood of current models
 		print(('Iteration '..iter)..' loglikelihood: '..loglikelihood)
 
 		-- M-Step: re-estimate word models
 		current_word_models = self:MStep( current_word_models, words_to_learn, videos, labels, state_transitions_by_word, priors_per_word, observations_per_word )
+
+		-- Checkpoint
+		torch.save(output_dir..('_ckpt_'..iter)..'.t7', current_word_models)
 	end
 
 	return current_word_models
 end
 
 
-function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_word_models )
+function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
 	local state_transitions_by_word, priors_per_word, observations_per_word = self:initSummaryStatistics( words_to_learn, current_word_models )
 	local loglikelihood = 0
 
@@ -36,7 +43,7 @@ function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_w
 		-- Instantiate sentence tracker
 		local sentence = sentences[i]
 		local video = videos[i]
-		local sentence_tracker = SentenceTracker:new(sentence, video.detections_path, video.features_path, video.opticalflow_path, current_word_models)
+		local sentence_tracker = SentenceTracker:new(sentence, video.detections_path, video.features_path, video.opticalflow_path, current_word_models, filter_detections, words_to_filter_by)
 
 		-- Get posteriors for the example
 		local trans, priors, obs, ll = sentence_tracker:partialEStep( words_to_learn )
@@ -54,7 +61,7 @@ function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_w
 			end
 
 			-- Compile the observation examples for each word state
-			for state = 1, priors:size(1) do
+			for state = 1, priors[w]:size(1) do
 				for k,v in pairs(obs[w][state]) do
 					table.insert(observations_per_word[w][state].examples, v.example)
 					table.insert(observations_per_word[w][state].labels, labels[i])
@@ -65,6 +72,10 @@ function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_w
 
 		-- Accumulate loglikelihood
 		loglikelihood = loglikelihood + ll
+
+		-- Display progress
+		-- io.write('\tE-step: '..(100 * i / #videos)..'%', '\r'); io.flush();
+		print('==> done with video '..i)
 	end
 
 	return state_transitions_by_word, priors_per_word, observations_per_word, loglikelihood
