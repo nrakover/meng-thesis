@@ -54,10 +54,31 @@ function getChairDetector()
 	print("Training 'chair' detector")
 	local chair_classifier = nil
 	if pcall(function() chair_classifier = torch.load(DETECTORS_PATH..'chair.t7') end) == false then
-		chair_classifier = getClassifier('datasets/VOC2007/chair_dataset.t7')
+		chair_classifier = getClassifier('datasets/video-corpus/object_images/chair_dataset.t7')
+		-- chair_classifier = getClassifier('datasets/VOC2007/chair_dataset.t7')
 		torch.save(DETECTORS_PATH..'chair.t7', chair_classifier)
 	end
 	return {emissions={chair_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getTrashbinDetector()
+	print("Training 'trash_bin' detector")
+	local trash_bin_classifier = nil
+	if pcall(function() trash_bin_classifier = torch.load(DETECTORS_PATH..'trash_bin.t7') end) == false then
+		trash_bin_classifier = getClassifier('datasets/video-corpus/object_images/trash_bin_dataset.t7')
+		torch.save(DETECTORS_PATH..'trash_bin.t7', trash_bin_classifier)
+	end
+	return {emissions={trash_bin_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getBackpackDetector()
+	print("Training 'backpack' detector")
+	local backpack_classifier = nil
+	if pcall(function() backpack_classifier = torch.load(DETECTORS_PATH..'backpack.t7') end) == false then
+		backpack_classifier = getClassifier('datasets/video-corpus/object_images/backpack_dataset.t7')
+		torch.save(DETECTORS_PATH..'backpack.t7', backpack_classifier)
+	end
+	return {emissions={backpack_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
 end
 
 
