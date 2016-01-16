@@ -48,7 +48,7 @@ function trainLinearModel( examples, labels, weights, verbose )
 		table.insert(indices, i)
 	end
 
-	local max_epochs = 18
+	local max_epochs = 10
 	local prev_err = 0
 	local exit_threshold = 1e-8
 	for epoch = 1, max_epochs do
