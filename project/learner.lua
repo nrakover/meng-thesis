@@ -7,7 +7,8 @@ WordLearner = {}
 
 function WordLearner:learnWords( output_name, words_to_learn, videos, sentences, labels, initial_word_models, max_iterations, filter_detections, words_to_filter_by )
 
-	print('\nLearning words: ', words_to_learn)
+	print('\nLearning words:')
+	print(words_to_learn)
 	print('\n')
 
 	local current_word_models = initial_word_models
@@ -102,7 +103,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 				end
 				-- Normalize
 				local total_mass = transition_counts_from_p:sum()
-				new_state_transitions[{{p},{}}] = transition_counts_from_p / total_mass
+				new_state_transitions[{{p},{}}] = (transition_counts_from_p + 0.01) / (total_mass + 0.01*transition_counts_from_p:size(1)) -- smooth by 0.01
 			end
 
 			-- Compute the state priors
@@ -113,7 +114,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 				state_priors_counts = state_priors_counts - state_priors_counts:min()
 			end
 			-- Normalize
-			local new_state_priors = state_priors_counts / state_priors_counts:sum()
+			local new_state_priors = (state_priors_counts + 0.01) / (state_priors_counts:sum() + 0.01*state_priors_counts:size(1)) -- smooth by 0.01
 
 			-- Compute the emissions models
 			-- ####################################

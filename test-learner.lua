@@ -72,12 +72,28 @@ local function initClassifier(num_arguments)
 	return classifier
 end
 
+local function initTransitionMatrix(n)
+	local T = torch.rand(n,n)
+	for i = 1, n do
+		T[{{i},{}}] = (T[{{i},{}}] + 0.05) / (T[{{i},{}}]:sum() + 0.05*n)
+	end
+	print(T)
+	return T
+end
+
+local function initPriors(n)
+	local P = torch.rand(n)
+	P = (P + 0.05) / (P:sum() + 0.05*n)
+	print(P)
+	return P
+end
+
 local function initKStateWord(num_arguments, K)
 	local classifiers = {}
 	for i = 1, K do
 		classifiers[i] = initClassifier(num_arguments)
 	end
-	return {emissions=classifiers, transitions=torch.FloatTensor(K,K), priors=torch.FloatTensor(K)}
+	return {emissions=classifiers, transitions=initTransitionMatrix(K), priors=initPriors(K)}
 end
 
 
