@@ -15,5 +15,5 @@
 
 ## Misc TODOs
 1. ~~use distance transform to speed up optical flow averaging~~
-2. add smoothing to M-step
+2. ~~add smoothing to M-step~~
 3. consider excluding observation examples with negligible weight from emission model training
