@@ -16,7 +16,7 @@ end
 -- ###############
 -- ##	Train 	##
 -- ###############
-function trainLinearModel( examples, labels, weights, verbose )
+function trainLinearModel( examples, labels, weights, max_epochs, verbose )
 	verbose = verbose or false
 
 	-- If not provided, weigh each example by 1
@@ -48,7 +48,7 @@ function trainLinearModel( examples, labels, weights, verbose )
 		table.insert(indices, i)
 	end
 
-	local max_epochs = 10
+	local max_epochs = max_epochs or 10
 	local prev_err = 0
 	local exit_threshold = 1e-8
 	for epoch = 1, max_epochs do
@@ -102,7 +102,7 @@ end
 function predictLabels( model, examples )
 	local predictions = {}
 	for i,x in ipairs(examples) do
-		local score = model:forward(x)[1]
+		local score = model:forward(torch.squeeze(x):double())[1]
 		if score >= 0.5 then
 			predictions[i] = 1
 		else
@@ -119,7 +119,7 @@ function scoreTestSet( model, examples, targets, weights )
 	local true_preds = 0
 	local total_weight = 0
 	for i = 1, #examples do
-		if predictions[i] == targets[i] then
+		if (predictions[i] == 1 and targets[i] == 1) or (predictions[i] ~= 1 and targets[i] ~= 1) then
 			true_preds = true_preds + weights[i]
 		end
 		total_weight = total_weight + weights[i]
