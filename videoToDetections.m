@@ -12,7 +12,9 @@ function detections_by_frame = videoToDetections( infile, outfile, numProposals 
 			I = readFrame(v);
 			frame_proposals = ObjectProposals('randomPrim', I, numProposals);
 
-			detections(t,:,:) = frame_proposals.boxes;
+			num_proposals_generated = size(frame_proposals.boxes, 1);
+
+			detections(t,1:num_proposals_generated,:) = frame_proposals.boxes;
 		end
 		display(100*t/numFrames)
 	end
