@@ -50,7 +50,7 @@ function extractFeatures(img, net)
 	local normd_img = normalizeImage(processed_img)
 	net:forward(normd_img)
 	local features = net:get(LAYER_TO_EXTRACT).output:clone()
-	return nn.View(1):forward(features)
+	return torch.squeeze(nn.View(1):forward(features)):double()
 end
 
 local net = loadcaffe.load('/local/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', '/local/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
@@ -114,10 +114,10 @@ end
 
 
 -- Run on test data
--- local detectionsByFrame = matio.load('datasets/video-corpus/preprocessed-videos/MVI_0882/detections.mat' , 'detections_by_frame')
--- local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'datasets/video-corpus/preprocessed-videos/MVI_0882/video.avi')
+-- local detectionsByFrame = matio.load('script_in/nico2.mat' , 'detections_by_frame')
+-- local features, opticalflow = extractFeaturesAndOpticalFlow(detectionsByFrame, 'script_in/nico2.avi')
 
--- torch.save('script_in/yellow-white-cars_features.t7', features)
--- torch.save('script_in/yellow-white-cars_opticalflow.t7', opticalflow)
+-- torch.save('script_in/nico2_features.t7', features)
+-- torch.save('script_in/nico2_opticalflow.t7', opticalflow)
 
 
