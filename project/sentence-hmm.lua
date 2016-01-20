@@ -32,11 +32,15 @@ end
 
 function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path, filter_detections, word_models, words_to_filter_by)
 	-- Load the detection proposals
-	self.detectionsByFrame = self:detectionsTensorToTable( matio.load(video_detections_path , 'detections_by_frame').detections )
-	self.numFrames = #self.detectionsByFrame
-
+	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame').detections
+	
 	-- Load the neural network features from proposals
 	self.detectionFeatures = torch.load(video_features_path)
+
+	-- Convert detections tensor into a table and filter out null detections (and corresponding features)
+	self.detectionsByFrame, self.detectionFeatures = self:detectionsTensorToTable(self.detectionsByFrame, self.detectionFeatures)
+
+	self.numFrames = #self.detectionsByFrame	
 
 	if filter_detections then
 		self.detectionsByFrame, self.detectionFeatures = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, word_models, words_to_filter_by, 4)
@@ -57,14 +61,19 @@ function SentenceTracker:filterDetections( all_detections_by_frame, all_features
 		local scores_by_role = torch.Tensor(self.numRoles, #all_detections_by_frame[fIndx])
 		-- Iterate over detections
 		for detIndx = 1, #all_detections_by_frame[fIndx] do
-			local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
+			
+			if self:isNullDetection(all_detections_by_frame[fIndx][detIndx]) then
+				scores_by_role[{{},{detIndx}}] = math.log(0)	-- scrap it
+			else
+				local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
 
-			-- Score the detection
-			for i,w in ipairs(self.positionToWord) do
-				-- Only filter by 1-state words that take a single argument
-				if #self.positionToRoles[i] == 1 and words_to_filter_by[w] ~= nil and word_models[w] ~= nil and word_models[w].priors:size(1) == 1 then
-					local ll = math.log(word_models[w].emissions[1]:forward(features)[1])
-					scores_by_role[self.positionToRoles[i][1]][detIndx] = scores_by_role[self.positionToRoles[i][1]][detIndx] + ll
+				-- Score the detection
+				for i,w in ipairs(self.positionToWord) do
+					-- Only filter by 1-state words that take a single argument
+					if #self.positionToRoles[i] == 1 and words_to_filter_by[w] ~= nil and word_models[w] ~= nil and word_models[w].priors:size(1) == 1 then
+						local ll = math.log(word_models[w].emissions[1]:forward(features)[1])
+						scores_by_role[self.positionToRoles[i][1]][detIndx] = scores_by_role[self.positionToRoles[i][1]][detIndx] + ll
+					end
 				end
 			end
 		end
@@ -122,9 +131,12 @@ function SentenceTracker:getBestTrack()
 	-- TODO: generalize to more that one word
 	local track = {}
 	for frameIndx = 1, #path do
+		track[frameIndx] = {}
 		local state = path[frameIndx]
-		local detIndx = state[1]
-		track[frameIndx] = self.detectionsByFrame[frameIndx][detIndx]:clone()
+		for r = 1, self.numRoles do
+			local detIndx = state[r]
+			table.insert(track[frameIndx], self.detectionsByFrame[frameIndx][detIndx]:clone())
+		end
 	end
 	return track
 end
@@ -182,8 +194,6 @@ function SentenceTracker:partialEStep( words_to_learn )
 			-- Next node
 			p = self:nextNode(frameIndx, p)
 		end
-
-		print('Done with frame '..frameIndx)
 	end
 
 	return state_transitions_by_word, priors_per_word, observations_per_word, Z
@@ -539,16 +549,30 @@ function SentenceTracker:getKey(k, v)
 	return key
 end
 
-function SentenceTracker:detectionsTensorToTable( detections_by_frame )
+function SentenceTracker:detectionsTensorToTable( detections_by_frame, detection_features )
 	local detections_table = {}
+	local filtered_detection_features = {}
 	for fIndx = 1, detections_by_frame:size(1) do
 		detections_table[fIndx] = {}
+		filtered_detection_features[fIndx] = {}
 		for detIndx = 1, detections_by_frame:size(2) do
-			detections_table[fIndx][detIndx] = detections_by_frame[fIndx][detIndx]:clone()
+			if self:isNullDetection(detections_by_frame[fIndx][detIndx]) == false then
+				table.insert(detections_table[fIndx], detections_by_frame[fIndx][detIndx]:clone())
+				table.insert(filtered_detection_features[fIndx], detection_features[fIndx][detIndx]:clone())
+			end
 		end
 	end
-	return detections_table
+	return detections_table, filtered_detection_features
 end
 
+function SentenceTracker:self:isNullDetection( detection )
+	-- Get detection bounds
+	local x_min = detection[1]
+	local y_min = detection[2]
+	local x_max = detection[3]
+	local y_max = detection[4]
+
+	return (x_min == x_max and y_min == y_max)
+end
 
 
