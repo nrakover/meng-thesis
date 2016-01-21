@@ -40,65 +40,14 @@ function SentenceTracker:processVideo(video_detections_path, video_features_path
 	-- Convert detections tensor into a table and filter out null detections (and corresponding features)
 	self.detectionsByFrame, self.detectionFeatures = self:detectionsTensorToTable(self.detectionsByFrame, self.detectionFeatures)
 
-	self.numFrames = #self.detectionsByFrame	
-
-	if filter_detections then
-		self.detectionsByFrame, self.detectionFeatures = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, word_models, words_to_filter_by, 4)
-	end
+	self.numFrames = #self.detectionsByFrame
 
 	-- Load the optical flow for each frame
 	self.detectionsOptFlow = torch.load(video_optflow_path)
 
-end
-
-function SentenceTracker:filterDetections( all_detections_by_frame, all_features, word_models, words_to_filter_by, K )
-	local filtered_detections = {}
-	local filtered_features = {}
-
-	-- For each frame, select the best detections
-	for fIndx = 1, #all_detections_by_frame do
-
-		local scores_by_role = torch.Tensor(self.numRoles, #all_detections_by_frame[fIndx])
-		-- Iterate over detections
-		for detIndx = 1, #all_detections_by_frame[fIndx] do
-			
-			if self:isNullDetection(all_detections_by_frame[fIndx][detIndx]) then
-				scores_by_role[{{},{detIndx}}] = math.log(0)	-- scrap it
-			else
-				local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
-
-				-- Score the detection
-				for i,w in ipairs(self.positionToWord) do
-					-- Only filter by 1-state words that take a single argument
-					if #self.positionToRoles[i] == 1 and words_to_filter_by[w] ~= nil and word_models[w] ~= nil and word_models[w].priors:size(1) == 1 then
-						local ll = math.log(word_models[w].emissions[1]:forward(features)[1])
-						scores_by_role[self.positionToRoles[i][1]][detIndx] = scores_by_role[self.positionToRoles[i][1]][detIndx] + ll
-					end
-				end
-			end
-		end
-
-		filtered_detections[fIndx] = {}
-		filtered_features[fIndx] = {}
-		local detections_included = {}
-		-- Select the best set per role
-		for r = 1, scores_by_role:size(1) do
-			-- Sort in descending order along the 2nd dimension
-			local _, sorted_indices = torch.sort(scores_by_role[{{r},{}}], 2, true)
-
-			-- Take the top K detections
-			for i = 1, K do
-				local detIndx = sorted_indices[1][i]
-				if detections_included[detIndx] == nil then -- prevents repeated detections
-					detections_included[detIndx] = true
-					table.insert(filtered_detections[fIndx], all_detections_by_frame[fIndx][detIndx])
-					table.insert(filtered_features[fIndx], all_features[fIndx][detIndx])
-				end
-			end
-		end
+	if filter_detections then
+		self.detectionsByFrame, self.detectionFeatures = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, self.detectionsOptFlow, word_models, words_to_filter_by, 4)
 	end
-
-	return filtered_detections, filtered_features
 end
 
 function SentenceTracker:parseSentence(sentence)
@@ -332,7 +281,7 @@ function SentenceTracker:logBeta( k, v )
 
 	-- Base Case:
 	if k == self.numFrames then
-		local loglikelihood = self:computeTracksObservationScore( k, v ) + self:computeWordsObservationScore( k, v )
+		local loglikelihood = self:computeTracksObservationScore( k, v ) + self:computeWordsObservationScore( k, v ) + self:computeWordsTerminationScore( v )
 		-- Memoize and return
 		self.betaMemo[key] = loglikelihood
 		return loglikelihood
@@ -416,6 +365,12 @@ function SentenceTracker:PI( k, v )
 		end
 
 		scoreToReturn = tracksObservationScore + wordsObservationScore + bestTransitionScore
+
+		-- Account for terminal distribution on last frame
+		if k == self.numFrames then
+			scoreToReturn = scoreToReturn + self:computeWordsTerminationScore( v )
+		end
+
 		bestPath = {}
 		for p = 1, #bestPathPrefix do
 			table.insert(bestPath, bestPathPrefix[p])
@@ -467,6 +422,17 @@ function SentenceTracker:computeWordsPriorScore( v )
 		end
 	end
 	return wordsPriorScore
+end
+
+function SentenceTracker:computeWordsTerminationScore( v )
+	local wordsTerminationScore = 0
+	for i,w in ipairs(self.positionToWord) do
+		if v[i + self.numRoles] ~= 0 then
+			local state = v[i + self.numRoles]
+			wordsTerminationScore = wordsTerminationScore + math.log(self.words[w]:stateTerminalDistribution(state))
+		end
+	end
+	return wordsTerminationScore
 end
 
 function SentenceTracker:computeTracksTransitionScore( k, u, v )
@@ -549,6 +515,73 @@ function SentenceTracker:getKey(k, v)
 	return key
 end
 
+function SentenceTracker:filterDetections( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, K )
+	local filtered_detections = {}
+	local filtered_features = {}
+
+	local scores_by_role_per_frame = {}
+	local tracker = Tracker:new(all_detections_by_frame, optical_flow)
+
+	-- For each frame, select the best detections
+	for fIndx = 1, #all_detections_by_frame do
+
+		scores_by_role_per_frame[fIndx] = torch.Tensor(self.numRoles, #all_detections_by_frame[fIndx])
+		-- Iterate over detections
+		for detIndx = 1, #all_detections_by_frame[fIndx] do
+			
+			if self:isNullDetection(all_detections_by_frame[fIndx][detIndx]) then
+				scores_by_role_per_frame[fIndx][{{},{detIndx}}] = math.log(0)	-- scrap it
+			else
+				local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
+
+				-- Score the detection with the word models
+				for i,w in ipairs(self.positionToWord) do
+					-- Only filter by 1-state words that take a single argument
+					if #self.positionToRoles[i] == 1 and words_to_filter_by[w] ~= nil and word_models[w] ~= nil and word_models[w].priors:size(1) == 1 then
+						local ll = math.log(word_models[w].emissions[1]:forward(features)[1])
+						scores_by_role_per_frame[fIndx][self.positionToRoles[i][1]][detIndx] = scores_by_role_per_frame[fIndx][self.positionToRoles[i][1]][detIndx] + ll
+					end
+				end
+
+				-- Score the detection with the tracker
+				if fIndx > 1 then
+					for r = 1, self.numRoles do
+						local best_tracker_score = math.log(0)
+						for prevDetIndx = 1, #all_detections_by_frame[fIndx-1] do
+							local score = tracker:temporalCoherence(fIndx, prevDetIndx, detIndx) + scores_by_role_per_frame[fIndx-1][r][prevDetIndx]
+							if score >= best_tracker_score then
+								best_tracker_score = score
+							end
+						end
+						scores_by_role_per_frame[fIndx][r][detIndx] = scores_by_role_per_frame[fIndx][r][detIndx] + best_tracker_score
+					end
+				end
+			end
+		end
+
+		filtered_detections[fIndx] = {}
+		filtered_features[fIndx] = {}
+		local detections_included = {}
+		-- Select the best set per role
+		for r = 1, scores_by_role_per_frame[fIndx]:size(1) do
+			-- Sort in descending order along the 2nd dimension
+			local _, sorted_indices = torch.sort(scores_by_role_per_frame[fIndx][{{r},{}}], 2, true)
+
+			-- Take the top K detections
+			for i = 1, K do
+				local detIndx = sorted_indices[1][i]
+				if detections_included[detIndx] == nil then -- prevents repeated detections
+					detections_included[detIndx] = true
+					table.insert(filtered_detections[fIndx], all_detections_by_frame[fIndx][detIndx])
+					table.insert(filtered_features[fIndx], all_features[fIndx][detIndx])
+				end
+			end
+		end
+	end
+
+	return filtered_detections, filtered_features
+end
+
 function SentenceTracker:detectionsTensorToTable( detections_by_frame, detection_features )
 	local detections_table = {}
 	local filtered_detection_features = {}
@@ -565,7 +598,7 @@ function SentenceTracker:detectionsTensorToTable( detections_by_frame, detection
 	return detections_table, filtered_detection_features
 end
 
-function SentenceTracker:self:isNullDetection( detection )
+function SentenceTracker:isNullDetection( detection )
 	-- Get detection bounds
 	local x_min = detection[1]
 	local y_min = detection[2]
