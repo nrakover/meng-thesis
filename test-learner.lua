@@ -73,17 +73,19 @@ local function initClassifier(num_arguments)
 end
 
 local function initTransitionMatrix(n)
-	local T = torch.rand(n,n)
-	for i = 1, n do
-		T[{{i},{}}] = (T[{{i},{}}] + 0.05) / (T[{{i},{}}]:sum() + 0.05*n)
+	local T = torch.zeros(n,n)
+	for i = 1, n-1 do
+		T[{{i},{i,i+1}}] = torch.rand(1,2)
+		T[{{i},{}}] = T[{{i},{}}] / T[{{i},{}}]:sum()
 	end
+	T[{{n},{n}}] = 1
 	print(T)
 	return T
 end
 
 local function initPriors(n)
-	local P = torch.rand(n)
-	P = (P + 0.05) / (P:sum() + 0.05*n)
+	local P = torch.zeros(n)
+	P[1] = 1
 	print(P)
 	return P
 end
@@ -104,12 +106,12 @@ initial_word_models['trash_bin'] = getTrashbinDetector()
 initial_word_models['chair'] = getChairDetector()
 initial_word_models['backpack'] = getBackpackDetector()
 -- initial_word_models['car'] = getCarDetector()
-initial_word_models['black'] = getBlackDetector()
+-- initial_word_models['black'] = getBlackDetector()
 -- initial_word_models['yellow'] = getYellowDetector()
 -- initial_word_models['white'] = getWhiteDetector()
-initial_word_models['blue'] = getBlueDetector()
-initial_word_models['red'] = getRedDetector()
-initial_word_models['gray'] = getGrayDetector()
+-- initial_word_models['blue'] = getBlueDetector()
+-- initial_word_models['red'] = getRedDetector()
+-- initial_word_models['gray'] = getGrayDetector()
 
 local words_to_learn = {'approach'}
 initial_word_models['approach'] = initKStateWord(2, 3)
@@ -125,8 +127,11 @@ local negative_sentences, negative_example_names = loadSentences('approach/negat
 local sentences = concatTables(positive_sentences, negative_sentences)
 
 local example_names = concatTables(positive_example_names, negative_example_names)
-local videos = getVideos('/local/nrakover/meng/datasets/video-corpus/videos_272x192_all-frames_75-proposals/', example_names)
+local videos = getVideos('/local/nrakover/meng/datasets/video-corpus/videos_272x192_250_proposals/', example_names)
 local labels = torch.cat(torch.ones(#positive_sentences), -torch.ones(#negative_sentences))
 
-local learned_word_models = WordLearner:learnWords( '/local/nrakover/meng/learn_approach/models', words_to_learn, videos, sentences, labels, initial_word_models, 10, true, words_to_filter_by )
+local start_time = os.time() -- ~ 10:25pm
+local learned_word_models = WordLearner:learnWords( '/local/nrakover/meng/learn_approach_take2/models', words_to_learn, videos, sentences, labels, initial_word_models, 10, true, words_to_filter_by )
+local end_time = os.time()
 
+print('Minutes elapsed: '..((end_time - start_time)/60))

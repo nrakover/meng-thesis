@@ -14,12 +14,12 @@ end
 
 function Tracker:detectionStrength(frameIndx, detectionIndx)
 	-- TODO: insert score if available from object proposal generator
-	return 0
+	return 0 -- log(1)
 end
 
 function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	-- Base case:
-	if frameIndx == 1 then return 0 end
+	if frameIndx == 1 then return 0 end -- log(1)
 
 	-- Check if value is memoized
 	if self.memo[frameIndx][prevDetectionIndx][detectionIndx] ~= 1 then

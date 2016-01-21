@@ -17,6 +17,16 @@ end
 -- ##	Train 	##
 -- ###############
 function trainLinearModel( examples, labels, weights, max_epochs, verbose )
+	-- Define model
+	local model = nn.Sequential()
+	local num_inputs = examples[1]:size(1)
+	model:add(nn.Linear(num_inputs, 1)) -- linear regression layer
+	model:add(nn.Sigmoid()) -- signoid for squeezing into probability
+
+	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, verbose )
+end
+
+function doGradientDescentOnModel( model, examples, labels, weights, max_epochs, verbose )
 	verbose = verbose or false
 
 	-- If not provided, weigh each example by 1
@@ -32,12 +42,6 @@ function trainLinearModel( examples, labels, weights, max_epochs, verbose )
 
 	print('# positive examples: '..torch.sum(torch.eq(labels, 1)))
 	print('# negative examples: '..(labels:size(1)-torch.sum(torch.eq(labels, 1))) )
-
-	-- Define model
-	local model = nn.Sequential()
-	local num_inputs = examples[1]:size(1)
-	model:add(nn.Linear(num_inputs, 1)) -- linear regression layer
-	model:add(nn.Sigmoid()) -- signoid for squeezing into probability
 
 	-- Define training criterion
 	local criterion = nn.BCECriterion()

@@ -115,7 +115,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		-- ####################################
 		local state_transition_counts = state_transitions_by_word[w]
 		local new_state_transitions = torch.FloatTensor(state_transition_counts:size())
-		for p = 1, new_state_transitions:size(1) do
+		for p = 1, new_state_transitions:size(1)-1 do
 			local transition_counts_from_p = state_transition_counts[{{p},{}}]
 			-- Offset all counts if there are negative counts
 			if transition_counts_from_p:min() < 0 then
@@ -124,7 +124,15 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 			-- Normalize
 			local total_mass = transition_counts_from_p:sum()
 			new_state_transitions[{{p},{}}] = (transition_counts_from_p + 0.01) / (total_mass + 0.01*transition_counts_from_p:size(1)) -- smooth by 0.01
+
+			-- Clip probability outside the band diagonal
+			local tmp = torch.zeros(1,new_state_transitions:size(1))
+			tmp[{{1},{p,p+1}}] = new_state_transitions[{{p},{p,p+1}}]
+			new_state_transitions[{{p},{}}] = tmp / tmp:sum()
 		end
+		-- Last state has a trivial fixed distribution (self-loop)
+		new_state_transitions[{{new_state_transitions:size(1)},{}}] = torch.zeros(1,new_state_transitions:size(1))
+		new_state_transitions[{{new_state_transitions:size(1)},{new_state_transitions:size(1)}}] = 1
 
 		-- Compute the state priors
 		-- ####################################
@@ -140,7 +148,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		-- ####################################
 		local new_emissions_models = {}
 		for state = 1, state_priors_counts:size(1) do
-			new_emissions_models[state] = trainLinearModel(observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), observations_per_word[w][state].weights, math.min(2+iter, 10), true)
+			new_emissions_models[state] = doGradientDescentOnModel( current_word_models[w].emissions[state], observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), observations_per_word[w][state].weights, math.min(2+iter, 10), true )
 		end
 
 

@@ -1,22 +1,27 @@
+require 'nn'
 dofile('project/pretrained-word-models.lua');
 
-word_models = {}
-word_models['person'] = getPersonDetector()
-word_models['trash_bin'] = getTrashbinDetector()
-word_models['chair'] = getChairDetector()
-word_models['backpack'] = getBackpackDetector()
--- word_models['car'] = getCarDetector()
-word_models['black'] = getBlackDetector()
--- word_models['yellow'] = getYellowDetector()
--- word_models['white'] = getWhiteDetector()
-word_models['blue'] = getBlueDetector()
-word_models['red'] = getRedDetector()
-word_models['gray'] = getGrayDetector()
+-- word_models = {}
+-- word_models['person'] = getPersonDetector()
+-- word_models['trash_bin'] = getTrashbinDetector()
+-- word_models['chair'] = getChairDetector()
+-- word_models['backpack'] = getBackpackDetector()
+-- -- word_models['car'] = getCarDetector()
+-- word_models['black'] = getBlackDetector()
+-- -- word_models['yellow'] = getYellowDetector()
+-- -- word_models['white'] = getWhiteDetector()
+-- word_models['blue'] = getBlueDetector()
+-- word_models['red'] = getRedDetector()
+-- word_models['gray'] = getGrayDetector()
 
+word_models = torch.load('learn_approach_take2/models_ckpt_3.t7')
 
 sentence = {}
-sentence[1] = {word='person', roles={1}}
--- sentence[2] = {word='person', roles={1}}
+sentence[1] = {word='backpack', roles={1}}
+-- sentence[2] = {word='backpack', roles={1}}
+-- sentence[2] = {word='approach', roles={1,2}}
+-- sentence[3] = {word='backpack', roles={2}}
+-- sentence[4] = {word='chair', roles={2}}
 
 words_to_filter_by = {}
 words_to_filter_by['person'] = true
@@ -27,14 +32,14 @@ words_to_filter_by['backpack'] = true
 
 dofile('project/sentence-hmm.lua');
 dofile('track-to-mat.lua')
-sentence_tracker = SentenceTracker:new(sentence, 'datasets/video-corpus/videos_272x192_all-frames_75-proposals/MVI_0837/detections.mat', 'datasets/video-corpus/videos_272x192_all-frames_75-proposals/MVI_0837/features.t7', 'datasets/video-corpus/videos_272x192_all-frames_75-proposals/MVI_0837/opticalflow.t7', word_models, true, words_to_filter_by)
+sentence_tracker = SentenceTracker:new(sentence, 'datasets/video-corpus/videos_272x192_250_proposals/MVI_0837/detections.mat', 'datasets/video-corpus/videos_272x192_250_proposals/MVI_0837/features.t7', 'datasets/video-corpus/videos_272x192_250_proposals/MVI_0837/opticalflow.t7', word_models, true, words_to_filter_by)
 -- sentence_tracker = SentenceTracker:new(sentence, 'script_in/nico2.mat', 'script_in/nico2_features.t7', 'script_in/nico2_opticalflow.t7', word_models)
 
 track = sentence_tracker:getBestTrack()
 
-trackToMat(track, 'script_out/MVI_0837-PERSON_TRACK_FILTERED.mat')
+trackToMat(track, 'script_out/LAST_TRACK.mat')
 
--- state_transitions_by_word, priors_per_word, observations_per_word = sentence_tracker:partialEStep({'car', 'white'})
+-- state_transitions_by_word, priors_per_word, observations_per_word = sentence_tracker:partialEStep({'backpack'})
 
 
 -- require 'nn';

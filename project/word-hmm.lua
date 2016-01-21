@@ -45,7 +45,21 @@ function Word:probOfTransition(prevState, newState)
 end
 
 function Word:statePrior(state)
-	return self.statePriors[state]
+	-- Constrain starting state to be first state
+	if state == 1 then
+		return 1
+	else
+		return 0
+	end
+end
+
+function Word:stateTerminalDistribution(state)
+	-- Constrain terminal state to be the last state 
+	if state == self.stateTransitions:size(1) then
+		return 1
+	else
+		return 0
+	end
 end
 
 function Word:setMemoTables()
@@ -70,26 +84,40 @@ function Word:extractFeatures( frameIndx, detections )
 	end
 
 	local stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double()
-	if #detections > 1 then
-		local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec, 1)
+	if #detections == 2 then -- ########################### TEMPORARY ############################
+		local avg_flow_vec1 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec1, 1)
 
-		local center = self:getNormalizedDetectionCenter(frameIndx, detections[1])
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center, 1)
+		local center1 = self:getNormalizedDetectionCenter(frameIndx, detections[1])
+		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center1, 1)
+
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double(), 1)
+
+		local avg_flow_vec2 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[2])
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2, 1)
+
+		local center2 = self:getNormalizedDetectionCenter(frameIndx, detections[2])
+		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2, 1)
+
+		-- ########################### TEMPORARY ############################
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2 - center1, 1)
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2 - avg_flow_vec1, 1)
+		-- ########################### TEMPORARY ############################
 	end
 
-	for i = 2, #detections do
-		-- VGG features
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone():double(), 1)
+	-- for i = 2, #detections do
+	-- 	-- VGG features
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone():double(), 1)
 
-		-- Average optical flow vector
-		local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[i])
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec, 1)
+	-- 	-- Average optical flow vector
+	-- 	local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[i])
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec, 1)
 
-		-- Detection center, with coordinates normalized to [0,1]
-		local center = self:getNormalizedDetectionCenter(frameIndx, detections[i])
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center, 1)
-	end
+	-- 	-- Detection center, with coordinates normalized to [0,1]
+	-- 	local center = self:getNormalizedDetectionCenter(frameIndx, detections[i])
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, center, 1)
+	-- end
+
 	
 	self.featureExtractionMemo[key] = torch.squeeze(stacked_features_for_detections):double()
 	return self.featureExtractionMemo[key]
