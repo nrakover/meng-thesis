@@ -23,11 +23,14 @@ function trainLinearModel( examples, labels, weights, max_epochs, verbose )
 	model:add(nn.Linear(num_inputs, 1)) -- linear regression layer
 	model:add(nn.Sigmoid()) -- signoid for squeezing into probability
 
-	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, verbose )
+	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, 0.01, verbose )
 end
 
-function doGradientDescentOnModel( model, examples, labels, weights, max_epochs, verbose )
+function doGradientDescentOnModel( model, examples, labels, weights, max_epochs, learning_rate, verbose )
 	verbose = verbose or false
+
+	-- If not provided, the starting learning rate is 0.01
+	learning_rate = learning_rate or 0.01
 
 	-- If not provided, weigh each example by 1
 	weights = weights or torch.ones(#examples)
@@ -43,6 +46,9 @@ function doGradientDescentOnModel( model, examples, labels, weights, max_epochs,
 	print('# positive examples: '..torch.sum(torch.eq(labels, 1)))
 	print('# negative examples: '..(labels:size(1)-torch.sum(torch.eq(labels, 1))) )
 
+	print('total positive weight: '..torch.sum(weights[torch.eq(labels, 1)]))
+	print('total negative weight: '..torch.sum(weights[torch.ne(labels, 1)]))
+
 	-- Define training criterion
 	local criterion = nn.BCECriterion()
 
@@ -56,7 +62,7 @@ function doGradientDescentOnModel( model, examples, labels, weights, max_epochs,
 	local prev_err = 0
 	local exit_threshold = 1e-8
 	for epoch = 1, max_epochs do
-		local lr = 0.01 / epoch
+		local lr = learning_rate / epoch
 		local total_err = 0
 		local total_weight = 0
 

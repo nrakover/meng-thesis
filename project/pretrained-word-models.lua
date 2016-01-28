@@ -31,9 +31,11 @@ end
 -- ##	  NOUNS	   ##
 -- ##################
 function getPersonDetector()
-	print("Training 'person' detector")
 	local person_classifier = nil
-	if pcall(function() person_classifier = torch.load(DETECTORS_PATH..'person.t7') end) == false then
+	if pcall(function() person_classifier = torch.load(DETECTORS_PATH..'person.t7') end) then
+		print("Using cached 'person' detector")
+	else
+		print("Training 'person' detector")
 		person_classifier = getClassifier('datasets/video-corpus/object_images/person_dataset.t7', 3)
 		-- person_classifier = getClassifier('datasets/VOC2007/person_dataset.t7', 10)
 		torch.save(DETECTORS_PATH..'person.t7', person_classifier)
@@ -42,9 +44,11 @@ function getPersonDetector()
 end
 
 function getCarDetector()
-	print("Training 'car' detector")
 	local car_classifier = nil
-	if pcall(function() car_classifier = torch.load(DETECTORS_PATH..'car.t7') end) == false then
+	if pcall(function() car_classifier = torch.load(DETECTORS_PATH..'car.t7') end) then
+		print("Using cached 'car' detector")
+	else
+		print("Training 'car' detector")
 		car_classifier = getClassifier('datasets/VOC2007/car_dataset.t7')
 		torch.save(DETECTORS_PATH..'car.t7', car_classifier)
 	end
@@ -52,9 +56,11 @@ function getCarDetector()
 end
 
 function getChairDetector()
-	print("Training 'chair' detector")
 	local chair_classifier = nil
-	if pcall(function() chair_classifier = torch.load(DETECTORS_PATH..'chair.t7') end) == false then
+	if pcall(function() chair_classifier = torch.load(DETECTORS_PATH..'chair.t7') end) then
+		print("Using cached 'chair' detector")
+	else
+		print("Training 'chair' detector")
 		chair_classifier = getClassifier('datasets/video-corpus/object_images/chair_dataset.t7', 3)
 		-- chair_classifier = getClassifier('datasets/VOC2007/chair_dataset.t7')
 		torch.save(DETECTORS_PATH..'chair.t7', chair_classifier)
@@ -63,9 +69,12 @@ function getChairDetector()
 end
 
 function getTrashbinDetector()
-	print("Training 'trash_bin' detector")
+	
 	local trash_bin_classifier = nil
-	if pcall(function() trash_bin_classifier = torch.load(DETECTORS_PATH..'trash_bin.t7') end) == false then
+	if pcall(function() trash_bin_classifier = torch.load(DETECTORS_PATH..'trash_bin.t7') end) then
+		print("Using cached 'trash_bin' detector")
+	else
+		print("Training 'trash_bin' detector")
 		trash_bin_classifier = getClassifier('datasets/video-corpus/object_images/trash_bin_dataset.t7', 3)
 		torch.save(DETECTORS_PATH..'trash_bin.t7', trash_bin_classifier)
 	end
@@ -73,9 +82,11 @@ function getTrashbinDetector()
 end
 
 function getBackpackDetector()
-	print("Training 'backpack' detector")
 	local backpack_classifier = nil
-	if pcall(function() backpack_classifier = torch.load(DETECTORS_PATH..'backpack.t7') end) == false then
+	if pcall(function() backpack_classifier = torch.load(DETECTORS_PATH..'backpack.t7') end) then
+		print("Using cached 'backpack' detector")
+	else
+		print("Training 'backpack' detector")
 		backpack_classifier = getClassifier('datasets/video-corpus/object_images/backpack_dataset.t7', 3)
 		torch.save(DETECTORS_PATH..'backpack.t7', backpack_classifier)
 	end
