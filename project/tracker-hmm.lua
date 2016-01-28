@@ -3,8 +3,10 @@ require 'image'
 
 Tracker = {}
 
-function Tracker:new(detections_by_frame, detections_optical_flow)
-	local newObj = {detectionsByFrame=detections_by_frame, detectionsOptFlow=detections_optical_flow}
+function Tracker:new(detections_by_frame, detections_optical_flow, temporal_coherence_exponent)
+	temporal_coherence_exponent = temporal_coherence_exponent or 2
+
+	local newObj = {detectionsByFrame=detections_by_frame, detectionsOptFlow=detections_optical_flow, C=temporal_coherence_exponent}
 	self.__index = self
 	setmetatable(newObj, self)
 
@@ -28,24 +30,6 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 
 	-- Else use optical flow to compute distance:
 
-	-- Get detection bounds
-	local x_min = self.detectionsByFrame[frameIndx][detectionIndx][1]
-	local y_min = self.detectionsByFrame[frameIndx][detectionIndx][2]
-	local x_max = self.detectionsByFrame[frameIndx][detectionIndx][3]
-	local y_max = self.detectionsByFrame[frameIndx][detectionIndx][4]
-
-	if y_max == y_min then y_max = y_max + 1 end
-	if x_max == x_min then x_max = x_max + 1 end
-
-	-- Get average flow from region
-	local avg_flow_x = self:extractAvgFlowFromDistanceTransform(self.detectionsOptFlow[frameIndx].flow_x, x_min, y_min, x_max, y_max)
-	local avg_flow_y = self:extractAvgFlowFromDistanceTransform(self.detectionsOptFlow[frameIndx].flow_y, x_min, y_min, x_max, y_max)
-	local avg_flow = torch.Tensor( { avg_flow_x, avg_flow_y } )
-
-	-- Project current detection's center
-	local projected_center = torch.Tensor( {(x_max+x_min)/2, (y_max+y_min)/2} ) - avg_flow
-
-
 	-- Get detection bounds for previous frame detection
 	local prev_x_min = self.detectionsByFrame[frameIndx-1][prevDetectionIndx][1]
 	local prev_y_min = self.detectionsByFrame[frameIndx-1][prevDetectionIndx][2]
@@ -58,12 +42,32 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	-- Previous detection's center
 	local prev_center = torch.Tensor( {(prev_x_max+prev_x_min)/2, (prev_y_max+prev_y_min)/2} )
 
+	-- Get average flow from region
+	local avg_flow_x = self:extractAvgFlowFromDistanceTransform(self.detectionsOptFlow[frameIndx].flow_x, prev_x_min, prev_y_min, prev_x_max, prev_y_max)
+	local avg_flow_y = self:extractAvgFlowFromDistanceTransform(self.detectionsOptFlow[frameIndx].flow_y, prev_x_min, prev_y_min, prev_x_max, prev_y_max)
+	local avg_flow = torch.Tensor( { avg_flow_x, avg_flow_y } )
+
+	-- Project previous detection's center
+	local projected_center = prev_center + avg_flow
+
+	-- Get detection bounds for current frame
+	local x_min = self.detectionsByFrame[frameIndx][detectionIndx][1]
+	local y_min = self.detectionsByFrame[frameIndx][detectionIndx][2]
+	local x_max = self.detectionsByFrame[frameIndx][detectionIndx][3]
+	local y_max = self.detectionsByFrame[frameIndx][detectionIndx][4]
+
+	if y_max == y_min then y_max = y_max + 1 end
+	if x_max == x_min then x_max = x_max + 1 end
+
+	-- Current detection's center
+	local current_center = torch.Tensor( {(x_max+x_min)/2, (y_max+y_min)/2} )
+
 
 	-- Negative Euclidean distance between previous detection's center and backprojected center
-	local d = torch.dist(projected_center, prev_center)
+	local d = torch.dist(projected_center, current_center)
 	-- Normalize the distance into [0,1]
 	local max_d = torch.dist( torch.Tensor({1,1}), torch.Tensor({self.detectionsOptFlow[frameIndx].flow_x:size(1), self.detectionsOptFlow[frameIndx].flow_x:size(2)}) )
-	local score = math.log( 1 - (d / max_d) )
+	local score = math.log( 1 - (d / max_d) ) * self.C
 
 	-- Memoize
 	self.memo[frameIndx][prevDetectionIndx][detectionIndx] = score
