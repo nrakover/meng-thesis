@@ -100,6 +100,7 @@ function Word:extractFeatures( frameIndx, detections )
 		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2, 1)
 
 		-- ########################### TEMPORARY ############################
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({torch.dist(center2, center1)}), 1)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2 - center1, 1)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2 - avg_flow_vec1, 1)
 		-- ########################### TEMPORARY ############################
