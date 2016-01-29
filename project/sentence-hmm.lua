@@ -27,7 +27,7 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 	newObj:processVideo(video_detections_path, video_features_path, video_optflow_path, filter_detections, word_models, words_to_filter_by)
 
 	-- Initialize tracker
-	newObj.tracker = Tracker:new(newObj.detectionsByFrame, newObj.detectionsOptFlow, 30)
+	newObj.tracker = Tracker:new(newObj.detectionsByFrame, newObj.detectionsOptFlow, 40)
 
 	-- Initialize word trackers
 	newObj:buildWordModels(word_models)
@@ -51,7 +51,19 @@ function SentenceTracker:processVideo(video_detections_path, video_features_path
 	self.detectionsOptFlow = torch.load(video_optflow_path)
 
 	if filter_detections then
-		self.detectionsByFrame, self.detectionFeatures = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, self.detectionsOptFlow, word_models, words_to_filter_by, 4 )
+		self.detectionsByFrame, self.detectionFeatures, self.detectionIndicesPerRole = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, self.detectionsOptFlow, word_models, words_to_filter_by, 4 )
+		print(self.detectionIndicesPerRole)
+	else
+		self.detectionIndicesPerRole = {}
+		for f = 1, self.numFrames do
+			self.detectionIndicesPerRole[f] = {}
+			for r = 1, self.numRoles do
+				self.detectionIndicesPerRole[f][r] = {}
+				for i = 1, #self.detectionsByFrame[f] do
+					table.insert(self.detectionIndicesPerRole[f][r], i)
+				end
+			end
+		end
 	end
 end
 
@@ -92,7 +104,7 @@ function SentenceTracker:getBestTrack()
 		track[frameIndx] = {}
 		local state = path[frameIndx]
 		for r = 1, self.numRoles do
-			local detIndx = state[r]
+			local detIndx = self.detectionIndicesPerRole[frameIndx][r][state[r]]
 			table.insert(track[frameIndx], self.detectionsByFrame[frameIndx][detIndx]:clone())
 		end
 	end
@@ -176,7 +188,7 @@ function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_
 			-- Accumulate observations
 			local detections = {}
 			for j,r in ipairs(self.positionToRoles[i]) do
-				detections[j] = p[r]
+				detections[j] = self.detectionIndicesPerRole[frameIndx][r][p[r]]
 			end
 
 			local obs_key = self.words[w]:getKey(first_state, frameIndx, detections)
@@ -198,7 +210,7 @@ function SentenceTracker:accumulatePosterior( posterior, frameIndx, p, q, state_
 			if frameIndx == self.numFrames - 1 then
 				local detections = {}
 				for j,r in ipairs(self.positionToRoles[i]) do
-					detections[j] = q[r]
+					detections[j] = self.detectionIndicesPerRole[frameIndx+1][r][q[r]]
 				end
 
 				local obs_key = self.words[w]:getKey(second_state, frameIndx+1, detections)
@@ -422,7 +434,8 @@ end
 function SentenceTracker:computeTracksObservationScore( k, v )
 	local tracksObservationScore = 0
 	for r = 1, self.numRoles do
-		tracksObservationScore = tracksObservationScore + self.tracker:detectionStrength(k, v[r])
+		local detIndx = self.detectionIndicesPerRole[k][r][v[r]]
+		tracksObservationScore = tracksObservationScore + self.tracker:detectionStrength(k, detIndx)
 	end
 	return tracksObservationScore
 end
@@ -434,7 +447,7 @@ function SentenceTracker:computeWordsObservationScore( k, v )
 			local state = v[i + self.numRoles]
 			local detections = {}
 			for j,r in ipairs(self.positionToRoles[i]) do
-				detections[j] = v[r]
+				detections[j] = self.detectionIndicesPerRole[k][r][v[r]]
 			end
 			wordsObservationScore = wordsObservationScore + math.log(self.words[w]:probOfEmission(state, k, detections))
 		end
@@ -467,7 +480,9 @@ end
 function SentenceTracker:computeTracksTransitionScore( k, u, v )
 	local tracksTransitionScore = 0
 	for r = 1, self.numRoles do
-		tracksTransitionScore = tracksTransitionScore + self.tracker:temporalCoherence(k, u[r], v[r])
+		local detIndx = self.detectionIndicesPerRole[k][r][v[r]]
+		local prevDetIndx = self.detectionIndicesPerRole[k-1][r][u[r]]
+		tracksTransitionScore = tracksTransitionScore + self.tracker:temporalCoherence(k, prevDetIndx, detIndx)
 	end
 	return tracksTransitionScore
 end
@@ -543,7 +558,7 @@ end
 
 function SentenceTracker:maxValueAt( frameIndx, i )
 	if i <= self.numRoles then
-		return #self.detectionsByFrame[frameIndx]
+		return #self.detectionIndicesPerRole[frameIndx][i]
 	else
 		local w = self.positionToWord[i - self.numRoles]
 		if self.words[w] ~= nil then
@@ -562,23 +577,24 @@ end
 function SentenceTracker:filterDetections( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role)
 	
 	-- Do first pass, overgenerating for each noun using forward-projection, without scoring two-argument words
-	local filtered_detections, filtered_features = self:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, 2*num_desired_proposals_per_role, true, false, 1.5 )
+	local filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, 2*num_desired_proposals_per_role, true, false, 10 )
 
 	-- Do second pass, scoring with two-argument words, no forward-projection and narrowing down to the desired number of proposals
-	return self:doSinglePassOfFilteringWithOptions( filtered_detections, filtered_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role, false, true, 25 )
+	return self:doSinglePassOfFilteringWithOptions( filtered_detections, filtered_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role, false, false, 20 )
 
-	-- return filtered_detections, filtered_features
+	-- return filtered_detections, filtered_features, detection_indices_per_role
 end
 
 function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, K, do_forward_project, score_with_two_arg_words, tracker_exponent )
 	local filtered_detections = {}
 	local filtered_features = {}
+	local detection_indices_per_role = {}
 
 	local scores_by_role_per_frame = {}
 	local tracker = Tracker:new(all_detections_by_frame, optical_flow, tracker_exponent)
 
 	-- For each frame, select the best detections
-	for fIndx = 1, #all_detections_by_frame do
+	for fIndx = 1, self.numFrames do
 		
 		-- Score with single-argument, single-state words and the tracker
 		scores_by_role_per_frame[fIndx] = torch.Tensor(self.numRoles, #all_detections_by_frame[fIndx])
@@ -601,15 +617,15 @@ function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_f
 		end
 
 		-- Take top K from each role
-		filtered_detections, filtered_features = self:getTopKPerRole( K, fIndx, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
+		filtered_detections, filtered_features, detection_indices_per_role = self:getTopKPerRole( K, fIndx, detection_indices_per_role, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
 	end
 
 	-- Add forward-projected proposals
 	if do_forward_project then
-		filtered_detections, filtered_features = self:addForwardProjectedProposals( tracker, filtered_detections, filtered_features, all_detections_by_frame, all_features, optical_flow )
+		filtered_detections, filtered_features, detection_indices_per_role = self:addForwardProjectedProposals( tracker, detection_indices_per_role, filtered_detections, filtered_features, all_detections_by_frame, all_features, optical_flow )
 	end
 
-	return filtered_detections, filtered_features
+	return filtered_detections, filtered_features, detection_indices_per_role
 end
 
 function SentenceTracker:scoreWithStaticWords( fIndx, detIndx, features, scores_by_role_per_frame, word_models, words_to_filter_by )
@@ -676,34 +692,62 @@ function SentenceTracker:scoreWithTwoArgumentWords( scores_by_role_per_frame, al
 	return scores_by_role_per_frame
 end
 
-function SentenceTracker:getTopKPerRole( K, fIndx, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
+function SentenceTracker:getTopKPerRole( K, fIndx, detection_indices_per_role, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
 	filtered_detections[fIndx] = {}
 	filtered_features[fIndx] = {}
+	detection_indices_per_role[fIndx] = {}
 	local detections_included = {}
 	-- Select the best set per role
-	for r = 1, scores_by_role_per_frame[fIndx]:size(1) do
+	for r = 1, self.numRoles do
 		-- Sort in descending order along the 2nd dimension
 		local _, sorted_indices = torch.sort(scores_by_role_per_frame[fIndx][{{r},{}}], 2, true)
 
+		detection_indices_per_role[fIndx][r] = {}
 		-- Take the top K detections
 		for i = 1, K do
 			local detIndx = sorted_indices[1][i]
 			if detections_included[detIndx] == nil then -- prevents repeated detections
-				detections_included[detIndx] = true
+				detections_included[detIndx] = #filtered_detections[fIndx] + 1
 				table.insert(filtered_detections[fIndx], all_detections_by_frame[fIndx][detIndx])
 				table.insert(filtered_features[fIndx], all_features[fIndx][detIndx])
 			end
+			table.insert(detection_indices_per_role[fIndx][r], detections_included[detIndx])
 		end
 	end
-	return filtered_detections, filtered_features
+	return filtered_detections, filtered_features, detection_indices_per_role
 end
 
-function SentenceTracker:addForwardProjectedProposals( tracker, filtered_detections, filtered_features, all_detections_by_frame, all_features, optical_flow )
+function SentenceTracker:addForwardProjectedProposals( tracker, detection_indices_per_role, filtered_detections, filtered_features, all_detections_by_frame, all_features, optical_flow )
 	for fIndx = self.numFrames, 2, -1 do
 		local detections_included = {}
-		for i = 1, #filtered_detections[fIndx] do
-			detections_included[filtered_detections[fIndx][i]] = true
+		local detections_included_per_role = {}
+		for r = 1, self.numRoles do
+			detections_included_per_role[r] = {}
+			for i = 1, #detection_indices_per_role[fIndx][r] do
+				local detIndx = detection_indices_per_role[fIndx][r][i]
+				if detections_included_per_role[r][detIndx] == nil then
+					detections_included_per_role[r][detIndx] = true
+				end
+
+				if detections_included[filtered_detections[fIndx][detIndx]] == nil then
+					detections_included[filtered_detections[fIndx][detIndx]] = detIndx
+				end
+			end
 		end
+		local previous_detections_included_per_role = {}
+		for r = 1, self.numRoles do
+			previous_detections_included_per_role[r] = {}
+			for i = 1, #detection_indices_per_role[fIndx][r] do
+				local detIndx = detection_indices_per_role[fIndx-1][r][i]
+				if previous_detections_included_per_role[r][detIndx] == nil then
+					previous_detections_included_per_role[r][detIndx] = true
+				end
+			end
+		end
+
+		-- for i = 1, #filtered_detections[fIndx] do
+		-- 	detections_included[filtered_detections[fIndx][i]] = true
+		-- end
 		for i = 1, #filtered_detections[fIndx-1] do
 			-- Get bounds
 			local old_bounds = filtered_detections[fIndx-1][i]:clone()
@@ -726,7 +770,7 @@ function SentenceTracker:addForwardProjectedProposals( tracker, filtered_detecti
 
 			-- Add to the proposals for next frame
 			if detections_included[all_detections_by_frame[fIndx][best_projected_index]] == nil and all_detections_by_frame[fIndx][best_projected_index] ~= nil then -- prevents repeated detections
-				detections_included[all_detections_by_frame[fIndx][best_projected_index]] = true
+				detections_included[all_detections_by_frame[fIndx][best_projected_index]] = #filtered_detections[fIndx] + 1
 				table.insert(filtered_detections[fIndx], all_detections_by_frame[fIndx][best_projected_index])
 				table.insert(filtered_features[fIndx], all_features[fIndx][best_projected_index])
 			
@@ -742,9 +786,22 @@ function SentenceTracker:addForwardProjectedProposals( tracker, filtered_detecti
 				print(#all_detections_by_frame[fIndx])
 				print('-----------------------------------------------------------------------')
 			end
+
+			-- Add to all the appropriate roles
+			local detIndx = detections_included[all_detections_by_frame[fIndx][best_projected_index]]
+			for r = 1, self.numRoles do
+				-- Check if the previous detection was included in the role
+				if previous_detections_included_per_role[r][i] then
+					-- Check if the new detection is already included
+					if not detections_included_per_role[r][detIndx] then
+						detections_included_per_role[r][detIndx] = true
+						table.insert(detection_indices_per_role[fIndx][r], detIndx)
+					end
+				end
+			end
 		end
 	end
-	return filtered_detections, filtered_features
+	return filtered_detections, filtered_features, detection_indices_per_role
 end
 
 function SentenceTracker:forwardProject( old_proposal, flow_vector, max_width, max_height )
