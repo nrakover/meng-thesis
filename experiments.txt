@@ -1,0 +1,751 @@
+learn_approach_take3:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state approach
+
+learn_approach_take4:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 4-state approach
+
+learn_pickup_take1:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+
+learn_pickup_take4: *** OVERWRITTEN: need to redo ***
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+
+learn_pickup_take5:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- learning rate decays with EM iteration
+
+learn_pickup_take6:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- learning rate decays with EM iteration
+	- VGG features omitted for verb
+
+learn_pickup_take7:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- VGG features omitted for verb
+
+learn_pickup_take8:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.001)
+	- VGG features omitted for verb
+
+learn_pickup_take9:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.1)
+	- VGG features omitted for verb
+
+learn_pickup_take10:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (1.0)
+	- VGG features omitted for verb
+
+learn_pickup_take11:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (1.0)
+	- VGG features omitted for verb
+	- epochs starts at 3
+
+learn_pickup_take12:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (5.0)
+	- VGG features omitted for verb
+	- epochs starts at 1
+
+learn_pickup_take13:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (5.0)
+	- VGG features omitted for verb
+	- epochs starts at 3
+
+learn_pickup_take14:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (5.0)
+	- VGG features omitted for verb
+	- epochs starts at 3
+	- fixed transition matrix
+
+learn_pickup_take15:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (10.0)
+	- VGG features omitted for verb
+	- epochs starts at 3
+
+learn_pickup_take16:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (10.0)
+	- VGG features omitted for verb
+	- epochs starts at 3
+	- fixed transition matrix
+
+learn_pickup_take17:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (1.0)
+	- VGG features omitted for verb
+	- epochs starts at 5 (ends at 10)
+	- fixed transition matrix
+
+learn_pickup_take18:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (1.0)
+	- VGG features omitted for verb
+	- epochs starts at 5 (ends at 10)
+	- fixed transition matrix
+	- Tracker exponent = 15 (instead of 40)
+
+learn_pickup_take19:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (1.0)
+	- VGG features omitted for verb
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+
+learn_pickup_take20:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+
+learn_pickup_take21:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.1)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+
+learn_pickup_take22:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+	- weight examples by likelihood of sentence (to the 1000th root)
+
+learn_pickup_take23:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.001)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+	- weight examples by likelihood of sentence (to the 1000th root)
+
+
+############################################################################################################################
+###############################################  EXPERIMENTS ABOVE ARE NULL  ###############################################
+############################################################################################################################
+
+
+
+
+learn_pickup_take24:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+	- one detection per role
+	- 10 epochs
+
+learn_pickup_take25:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 10)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+	- one detection per role
+	- weight examples by likelihood of sentence (to the 100th root)
+	- 15 epochs
+
+learn_approach_take5:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state approach
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.001)
+	- epochs starts at 3 (ends at 10)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+
+learn_approach_take6:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state approach
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 10)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+
+learn_approach_take7:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state approach
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 10)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- weight examples by likelihood of sentence (to the 1000th root)
+
+learn_pickup_take26:	*** SUCCESS ***
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+	- one detection per role
+	- 10 epochs
+	- features include shortest horizontal distance
+
+learn_pickup_take27:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- SINGLE TRACKS
+	- one detection per role
+	- 10 epochs
+	- features include shortest horizontal distance
+	- weight examples by likelihood of sentence (to the 100th root)
+
+learn_pickup_take28:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+
+learn_pickup_take29:	*** SUCCESS ***
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 2 detections per role (first two detections in struct)
+
+learn_pickup_take30:	FAILURE
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+
+learn_pickup_take31:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- with 6 new videos depicting red person only
+
+learn_pickup_take32:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.01)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- with 6 new videos depicting red person only
+	- additional negative examples of blue person
+
+learn_pickup_take33:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.001)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- with 6 new videos depicting red person only
+	- additional negative examples of blue person
+
+learn_pickup_take34:	*** SUCCESS *** (fails on cases where object is close to both people)
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.75)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- VGG features omitted for verb
+
+learn_pickup_take35:	*** SUCCESS *** (fails on cases where object is close to both people)
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.5)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 2 detections per role (first two detections in struct)
+	- VGG features omitted for verb
+
+learn_pickup_take36:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.5)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- VGG features scaled by 0.001
+	- with balanced positive examples
+
+learn_pickup_take37:	*** SUCCESS *** (struggles on cases where object is close to both people)
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.75)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- VGG features omitted for verb
+	- scale non-VGG features by 10
+
+learn_pickup_take38:	*** SUCCESS *** (struggles on cases where object is close to both people)
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.75)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- SINGLE TRACKS
+	- 3 detections per role (one detection per person and one for object)
+	- VGG features scaled by 0.01
+	- scale non-VGG features by 10
+
+learn_pickup_take39:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.1)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.01
+	- scale non-VGG features by 10
+	- ALL TRACKS
+
+learn_pickup_take40:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.25)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.01
+	- scale non-VGG features by 10
+	- ALL TRACKS
+
+learn_pickup_take41:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.75)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.01
+	- scale non-VGG features by 10
+	- ALL TRACKS
+
+learn_pickup_take42:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.5)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.01
+	- scale non-VGG features by 10
+	- ALL TRACKS
+
+learn_pickup_take43:
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- 3-state pickup
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.05)
+	- epochs starts at 3 (ends at 8)
+	- fixed transition matrix
+	- Tracker exponent = 40
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.01
+	- scale non-VGG features by 10
+	- ALL TRACKS
+
+
