@@ -55,12 +55,16 @@ end
 
 local net = loadcaffe.load('/local/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers_deploy.prototxt', '/local/nrakover/meng/networks/VGG/VGG_ILSVRC_19_layers.caffemodel', 'nn')
 
-function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
+function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath, compute_opticalflow)
+	if compute_opticalflow == nil then
+		compute_opticalflow = true
+	end
+
 	local w = detectionsByFrame.width[1][1]
 	local h = detectionsByFrame.height[1][1]
 	local frameRate = detectionsByFrame.fps[1][1]
 	local duration = detectionsByFrame.length[1][1]
-	local vid = ffmpeg.Video{path=video_filepath, height=h, width=w, fps=frameRate, length=duration}
+	local vid = ffmpeg.Video{path=video_filepath, height=h, width=w, fps=frameRate, length=duration, silent=true}
 
 	local videoFrames = vid:totensor(1,1,detectionsByFrame.detections:size(1))
 	print('Num frames: '..detectionsByFrame.detections:size(1))
@@ -75,7 +79,7 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 		local frame = videoFrames[frameIndx]
 
 		featuresByFrame[frameIndx] = {}
-		if frameIndx ~= 1 then
+		if frameIndx ~= 1 and compute_opticalflow then
 			local flow_norm, flow_angle, warp, fx, fy = liuflow.infer({prevFrame, frame})
 
 			print('Optical flow computed for frame '..frameIndx)
@@ -83,22 +87,33 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 			opticalflowByFrame[frameIndx] = {flow_x=distanceTransform(torch.squeeze(fx)), flow_y=distanceTransform(torch.squeeze(fy))}
 		end
 		
+
+		-- for detIndx = detectionsByFrame.person_detector_indices[frameIndx][1], frameDetections:size(1) do
 		-- Iterate over detections
 		for detIndx = 1,frameDetections:size(1) do
 			-- Get image region
 			local x_min = frameDetections[detIndx][1]
 			local y_min = frameDetections[detIndx][2]
-			local x_max = frameDetections[detIndx][3]
-			local y_max = frameDetections[detIndx][4]
+			local x_max = math.min(w-1, frameDetections[detIndx][3])
+			local y_max = math.min(h-1, frameDetections[detIndx][4])
 
-			if y_max == y_min then y_max = y_max + 1 end
-			if x_max == x_min then x_max = x_max + 1 end
+			-- Skip null detections
+			if x_min == 0 and x_max == 0 and y_min == 0 and y_max == 0 then
+				featuresByFrame[frameIndx][detIndx] = torch.DoubleTensor(4096):fill(0)
 
-			local frame_region = image.crop(frame, x_min, y_min, x_max, y_max)
+			else
+				if y_max == y_min then y_max = y_max + 1 end
+				if x_max == x_min then x_max = x_max + 1 end
 
-			-- Compute features
-			local frame_region_features = extractFeatures(frame_region, net)
-			featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
+				-- print(x_min, y_min, x_max, y_max, w, h)
+				-- print(frame:size())
+				local frame_region = image.crop(frame, x_min, y_min, x_max, y_max)
+
+				-- Compute features
+				local frame_region_features = extractFeatures(frame_region, net)
+				-- table.insert(featuresByFrame[frameIndx], frame_region_features:clone())
+				featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
+			end
 
 			-- Show progress on the current frame
 			io.write(('  '..(100 * detIndx / frameDetections:size(1)))..'%', '\r'); io.flush();
@@ -110,6 +125,22 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath)
 	end
 
 	return featuresByFrame, opticalflowByFrame
+end
+
+function extractFeaturesGivenFrameAndBounds(bounds, frame)
+	-- Get image region
+	local x_min = bounds[1]
+	local y_min = bounds[2]
+	local x_max = bounds[3]
+	local y_max = bounds[4]
+
+	if y_max == y_min then y_max = y_max + 1 end
+	if x_max == x_min then x_max = x_max + 1 end
+
+	local frame_region = image.crop(frame, x_min, y_min, x_max, y_max)
+
+	-- Compute features
+	return extractFeatures(frame_region, net)
 end
 
 
