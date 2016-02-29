@@ -15,7 +15,7 @@ def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate,
 
 	source_dir_contents = os.listdir(source_dir)
 	for filename in source_dir_contents:
-		if filename.endswith('.mov'):
+		if filename.endswith('.avi') or filename.endswith('.mov'): #filename.endswith('102.avi') or filename.endswith('105.avi'):
 			vid_name = filename[:-4]
 			print('Processing ' + vid_name + ':')
 
@@ -28,8 +28,35 @@ def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate,
 			eng.videoToDetections(downsampled_vid_path, detections_path, num_proposals, nargout=0)
 			print('\t==> proposals generation done')
 
+			eng.retrofitAddPersonDetections(downsampled_vid_path, detections_path, nargout=0)
+			print('\t==> person detection done')
+
 	eng.quit()
 
 
-doAllMATLABPreprocessing(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/videos_272x192_all-frames_75-proposals/', 1, 0.4, 75)
+# doAllMATLABPreprocessing(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/single_track_videos/', 1, 0.4, 400)
 
+
+def retrofitWithPersonDetector(source_dir, destination_dir):
+	eng = matlab.engine.start_matlab()
+
+	eng.addpath('/local/nrakover/meng/', nargout=0)
+
+	source_dir_contents = os.listdir(source_dir)
+	for filename in source_dir_contents:
+		if filename.endswith('.mov'):
+			vid_name = filename[:-4]
+			print('Processing ' + vid_name + ':')
+
+			vid_path = source_dir + filename
+			downsampled_vid_path = destination_dir + vid_name + '/video.avi'
+
+			detections_path = destination_dir + vid_name + '/detections.mat'
+
+			eng.retrofitAddPersonDetections(downsampled_vid_path, detections_path, nargout=0)
+			print('\t==> person detection done')
+
+	eng.quit()
+
+
+# retrofitWithPersonDetector(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/single_track_videos/')
