@@ -33,11 +33,17 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	-- Get detection bounds for previous frame detection
 	local prev_x_min = self.detectionsByFrame[frameIndx-1][prevDetectionIndx][1]
 	local prev_y_min = self.detectionsByFrame[frameIndx-1][prevDetectionIndx][2]
+	if self.detectionsOptFlow[frameIndx] == nil then
+		print('SOMETHING WRONG', frameIndx)
+	end
 	local prev_x_max = self.detectionsByFrame[frameIndx-1][prevDetectionIndx][3]
 	local prev_y_max = self.detectionsByFrame[frameIndx-1][prevDetectionIndx][4]
 
 	if prev_y_max == prev_y_min then prev_y_max = prev_y_max + 1 end
 	if prev_x_max == prev_x_min then prev_x_max = prev_x_max + 1 end
+
+	prev_x_max = math.min( self.detectionsOptFlow[frameIndx].flow_x:size(2)-1, prev_x_max )
+	prev_y_max = math.min( self.detectionsOptFlow[frameIndx].flow_x:size(1)-1, prev_y_max )
 
 	-- Previous detection's center
 	local prev_center = torch.Tensor( {(prev_x_max+prev_x_min)/2, (prev_y_max+prev_y_min)/2} )
@@ -69,6 +75,10 @@ function Tracker:temporalCoherence(frameIndx, prevDetectionIndx, detectionIndx)
 	local max_d = torch.dist( torch.Tensor({1,1}), torch.Tensor({self.detectionsOptFlow[frameIndx].flow_x:size(1), self.detectionsOptFlow[frameIndx].flow_x:size(2)}) )
 	local score = math.log( 1 - (d / max_d) ) * self.C
 
+
+	-- Add score for the coherence in the detection sizes
+	score = score + self:sizeCoherenceScore( prev_x_min, prev_y_min, prev_x_max, prev_y_max,  x_min, y_min, x_max, y_max,  self.detectionsOptFlow[frameIndx].flow_x:size(1), self.detectionsOptFlow[frameIndx].flow_x:size(2) )
+
 	-- Memoize
 	self.memo[frameIndx][prevDetectionIndx][detectionIndx] = score
 	return score
@@ -85,6 +95,14 @@ function Tracker:extractAvgFlowFromDistanceTransform(flow_field, x_min, y_min, x
 	local flow_sum = flow_field[y_max][x_max] - flow_field[y_min][x_max] - flow_field[y_max][x_min] + flow_field[y_min][x_min]
 	local area = (y_max-y_min) * (x_max-x_min)
 	return flow_sum / area
+end
+
+function Tracker:sizeCoherenceScore( prev_x_min, prev_y_min, prev_x_max, prev_y_max,  x_min, y_min, x_max, y_max,  max_height, max_width )
+	local area = math.max(0, x_max - x_min) * math.max(0, y_max - y_min)
+	local prev_area = math.max(0, prev_x_max - prev_x_min) * math.max(0, prev_y_max - prev_y_min)
+	local normalized_diff = math.abs(area - prev_area) / (area + prev_area)
+
+	return math.log( 1 - normalized_diff ) * 1.0
 end
 
 

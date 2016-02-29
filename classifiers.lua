@@ -43,11 +43,13 @@ function doGradientDescentOnModel( model, examples, labels, weights, max_epochs,
 	-- Cannonicalize labels
 	labels[torch.ne(labels, 1)] = 0
 
-	print('# positive examples: '..torch.sum(torch.eq(labels, 1)))
-	print('# negative examples: '..(labels:size(1)-torch.sum(torch.eq(labels, 1))) )
+	if verbose then
+		print('# positive examples: '..torch.sum(torch.eq(labels, 1)))
+		print('# negative examples: '..(labels:size(1)-torch.sum(torch.eq(labels, 1))) )
 
-	print('total positive weight: '..torch.sum(weights[torch.eq(labels, 1)]))
-	print('total negative weight: '..torch.sum(weights[torch.ne(labels, 1)]))
+		print('total positive weight: '..torch.sum(weights[torch.eq(labels, 1)]))
+		print('total negative weight: '..torch.sum(weights[torch.ne(labels, 1)]))
+	end
 
 	-- Define training criterion
 	local criterion = nn.BCECriterion()
@@ -88,8 +90,10 @@ function doGradientDescentOnModel( model, examples, labels, weights, max_epochs,
 	end
 
 	-- Print out accuracy on training set
-	local acc = scoreTestSet( model, examples, labels:double(), weights )
-	print('Training set accuracy = '..acc)
+	if verbose then
+		local acc = scoreTestSet( model, examples, labels:double(), weights )
+		print('Training set accuracy = '..acc)
+	end
 
 	return model
 end
@@ -102,7 +106,7 @@ function gradUpdate(mlp, x, target, criterion, weight, learning_rate)
 	mlp:backward(x, gradCriterion)
 	mlp:updateParameters(weight * learning_rate)
 
-	return err^2
+	return math.abs(err)
 end
 
 

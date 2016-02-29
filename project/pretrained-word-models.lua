@@ -36,7 +36,7 @@ function getPersonDetector()
 		print("Using cached 'person' detector")
 	else
 		print("Training 'person' detector")
-		person_classifier = getClassifier('datasets/video-corpus/object_images/person_dataset.t7', 3)
+		person_classifier = getClassifier('datasets/video-corpus/object_images/person_dataset.t7', 5)
 		-- person_classifier = getClassifier('datasets/VOC2007/person_dataset.t7', 10)
 		torch.save(DETECTORS_PATH..'person.t7', person_classifier)
 	end
@@ -61,7 +61,7 @@ function getChairDetector()
 		print("Using cached 'chair' detector")
 	else
 		print("Training 'chair' detector")
-		chair_classifier = getClassifier('datasets/video-corpus/object_images/chair_dataset.t7', 3)
+		chair_classifier = getClassifier('datasets/video-corpus/object_images/chair_dataset.t7', 4)
 		-- chair_classifier = getClassifier('datasets/VOC2007/chair_dataset.t7')
 		torch.save(DETECTORS_PATH..'chair.t7', chair_classifier)
 	end
@@ -87,7 +87,7 @@ function getBackpackDetector()
 		print("Using cached 'backpack' detector")
 	else
 		print("Training 'backpack' detector")
-		backpack_classifier = getClassifier('datasets/video-corpus/object_images/backpack_dataset.t7', 3)
+		backpack_classifier = getClassifier('datasets/video-corpus/object_images/backpack_dataset.t7', 5)
 		torch.save(DETECTORS_PATH..'backpack.t7', backpack_classifier)
 	end
 	return {emissions={backpack_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}

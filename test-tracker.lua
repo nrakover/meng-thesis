@@ -1,27 +1,28 @@
+require 'torch'
 require 'nn'
 dofile('project/pretrained-word-models.lua');
 
+word_models = torch.load('learn_pickup_take42/models_ckpt_10.t7')
+-- word_models = torch.load('learn_approach_take7/models_ckpt_3.t7')
+
 -- word_models = {}
--- word_models['person'] = getPersonDetector()
--- word_models['trash_bin'] = getTrashbinDetector()
--- word_models['chair'] = getChairDetector()
--- word_models['backpack'] = getBackpackDetector()
+word_models['person'] = getPersonDetector()
+word_models['trash_bin'] = getTrashbinDetector()
+word_models['chair'] = getChairDetector()
+word_models['backpack'] = getBackpackDetector()
 -- -- word_models['car'] = getCarDetector()
--- word_models['black'] = getBlackDetector()
+-- -- word_models['black'] = getBlackDetector()
 -- -- word_models['yellow'] = getYellowDetector()
 -- -- word_models['white'] = getWhiteDetector()
--- word_models['blue'] = getBlueDetector()
--- word_models['red'] = getRedDetector()
--- word_models['gray'] = getGrayDetector()
-
-word_models = torch.load('learn_approach_take2/models_ckpt_3.t7')
+-- -- word_models['blue'] = getBlueDetector()
+-- -- word_models['red'] = getRedDetector()
+-- -- word_models['gray'] = getGrayDetector()
 
 sentence = {}
-sentence[1] = {word='backpack', roles={1}}
--- sentence[2] = {word='backpack', roles={1}}
--- sentence[2] = {word='approach', roles={1,2}}
--- sentence[3] = {word='backpack', roles={2}}
--- sentence[4] = {word='chair', roles={2}}
+sentence[1] = {word='person', roles={1}}
+sentence[2] = {word='pickup', roles={1,2}}
+sentence[3] = {word='chair', roles={2}}
+-- sentence[2] = {word='backpack', roles={2}}
 
 words_to_filter_by = {}
 words_to_filter_by['person'] = true
@@ -29,17 +30,59 @@ words_to_filter_by['trash_bin'] = true
 words_to_filter_by['chair'] = true
 words_to_filter_by['backpack'] = true
 
+-- words_to_filter_by['pickup'] = true
+
+VID_DIR = 'datasets/video-corpus/single_track_videos/MVI_0840/'
+
+-- TARGET = 'person'
+-- TARGET = 'backpack'
+-- TARGET = 'trash_bin'
+-- TARGET = 'chair'
+
+-- sentence[1] = {word=TARGET, roles={1}}
 
 dofile('project/sentence-hmm.lua');
 dofile('track-to-mat.lua')
-sentence_tracker = SentenceTracker:new(sentence, 'datasets/video-corpus/videos_272x192_250_proposals/MVI_0837/detections.mat', 'datasets/video-corpus/videos_272x192_250_proposals/MVI_0837/features.t7', 'datasets/video-corpus/videos_272x192_250_proposals/MVI_0837/opticalflow.t7', word_models, true, words_to_filter_by)
+start_time = os.time()
+sentence_tracker = SentenceTracker:new(sentence, VID_DIR..'detections.mat', VID_DIR..'features.t7', VID_DIR..'opticalflow.t7', word_models, true, words_to_filter_by)
 -- sentence_tracker = SentenceTracker:new(sentence, 'script_in/nico2.mat', 'script_in/nico2_features.t7', 'script_in/nico2_opticalflow.t7', word_models)
 
-track = sentence_tracker:getBestTrack()
+track, score = sentence_tracker:getBestTrack()
+print('Track score: '..score)
+
+-- sentence_tracker.detectionIndicesPerRole = sentence_tracker:nonMaximalSuppression( sentence_tracker.detectionIndicesPerRole, sentence_tracker.detectionsByFrame, 250, track )
+
+-- track2 = sentence_tracker:getBestTrack()
+
+
+-- full_track , _, detection_indices_per_role = sentence_tracker:filterDetections( sentence_tracker.detectionsByFrame, sentence_tracker.detectionFeatures, sentence_tracker.detectionsOptFlow, word_models, words_to_filter_by, 4 )
+
+-- track = {}
+-- for fIndx = 1, #full_track do
+-- 	track[fIndx] = {}
+-- 	for i = 1, 50 do
+-- 		track[fIndx][i] = full_track[fIndx][detection_indices_per_role[fIndx][1][i]]
+-- 	end
+-- end
+
+-- for fIndx = 1, #track do
+-- 	print(#track[fIndx])
+-- 	-- track[fIndx] = {track[fIndx][5], track[fIndx][6], track[fIndx][7], track[fIndx][8]}
+-- end
 
 trackToMat(track, 'script_out/LAST_TRACK.mat')
+-- trackToMat(track, VID_DIR..TARGET..'.mat')
+-- if track2 ~= nil then
+-- 	trackToMat(track2, 'script_out/LAST_TRACK_2.mat')
+-- 	trackToMat(track2, VID_DIR..TARGET..'2.mat')
+-- end
 
--- state_transitions_by_word, priors_per_word, observations_per_word = sentence_tracker:partialEStep({'backpack'})
+dofile('visualization/visualize-track.lua')
+visualizeTrackMAT('script_out/LAST_TRACK.mat', VID_DIR..'detections.mat', VID_DIR..'video.avi')
+
+-- state_transitions_by_word, priors_per_word, observations_per_word, ll = sentence_tracker:partialEStep({'pickup'})
+-- print(ll)
+-- print(state_transitions_by_word['pickup'])
 
 
 -- require 'nn';
@@ -83,5 +126,6 @@ trackToMat(track, 'script_out/LAST_TRACK.mat')
 
 -- test_d = t7ToSvmlight({goodFeatures, badFeatures, allFeatures}, torch.ByteTensor(3))
 -- labels,accuracy,prob = liblinear.predict(test_d, classifier, '-b 1');
-
+end_time = os.time()
+print('Seconds elapsed: '..((end_time - start_time)))
 print('==> FINISHED TESTING')

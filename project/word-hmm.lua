@@ -25,17 +25,10 @@ function Word:probOfEmission(state, frameIndx, detections)
 
 	-- else compute value
 	local stacked_features_for_detections = self:extractFeatures( frameIndx, detections )
-
-	-- local formatted_features = t7ToSvmlight({[1]=stacked_features_for_detections}, torch.ones(1))
-
-	-- local labels,accuracy,prob = liblinear.predict(formatted_features, self.emissionModels[state], '-b 1 -q')
 	local prob = self.emissionModels[state]:forward(stacked_features_for_detections)
 	
 	-- memoize
 	self.memo[key] = prob[1]
-	-- local positive_class_indx = 1
-	-- if self.emissionModels[state].label[2] == 1 then positive_class_indx = 2 end
-	-- self.memo[key] = prob[1][positive_class_indx]
 
 	return self.memo[key]
 end
@@ -83,15 +76,20 @@ function Word:extractFeatures( frameIndx, detections )
 		return self.featureExtractionMemo[key]
 	end
 
-	local stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double()
+	local stacked_features_for_detections = nil 
+
+	-- #################################### WITH VGG ####################################
+	stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double()
 	if #detections == 2 then -- ########################### TEMPORARY ############################
+		stacked_features_for_detections:mul(0.001)
+
 		local avg_flow_vec1 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec1, 1)
 
 		local center1 = self:getNormalizedDetectionCenter(frameIndx, detections[1])
 		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center1, 1)
 
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double(), 1)
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double() * 0.001, 1)
 
 		local avg_flow_vec2 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[2])
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2, 1)
@@ -103,8 +101,44 @@ function Word:extractFeatures( frameIndx, detections )
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({torch.dist(center2, center1)}), 1)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2 - center1, 1)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2 - avg_flow_vec1, 1)
+
+		local horizontal_dist = self:getNormalizedClosestSideDistance( frameIndx, detections[1], detections[2] )
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({horizontal_dist}), 1)
 		-- ########################### TEMPORARY ############################
+		stacked_features_for_detections:mul(10)
 	end
+	-- #################################### WITH VGG ####################################
+
+	-- -- #################################### NO VGG ####################################
+	-- if #detections == 1 then
+	-- 	stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double()
+	-- elseif #detections == 2 then -- ########################### TEMPORARY ############################
+	-- 	local avg_flow_vec1 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
+	-- 	-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec1, 1)
+	-- 	stacked_features_for_detections = avg_flow_vec1
+
+	-- 	local center1 = self:getNormalizedDetectionCenter(frameIndx, detections[1])
+	-- 	-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center1, 1)
+
+	-- 	-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double(), 1)
+
+	-- 	local avg_flow_vec2 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[2])
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2, 1)
+
+	-- 	local center2 = self:getNormalizedDetectionCenter(frameIndx, detections[2])
+	-- 	-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2, 1)
+
+	-- 	-- ########################### TEMPORARY ############################
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({torch.dist(center2, center1)}), 1)
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2 - center1, 1)
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2 - avg_flow_vec1, 1)
+
+	-- 	local horizontal_dist = self:getNormalizedClosestSideDistance( frameIndx, detections[1], detections[2] )
+	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({horizontal_dist}), 1)
+	-- 	-- ########################### TEMPORARY ############################
+	-- 	stacked_features_for_detections:mul(10)
+	-- end
+	-- -- #################################### NO VGG ####################################
 
 	-- for i = 2, #detections do
 	-- 	-- VGG features
@@ -143,6 +177,8 @@ function Word:extractAvgFlowFromDistanceTransform( frameIndx, detectionIndx )
 
 	-- Compute average flow
 	local flow_field_x = self.framesOptFlow[frameIndx].flow_x
+	x_max = math.min(flow_field_x:size(2)-1, x_max)
+	y_max = math.min(flow_field_x:size(1)-1, y_max)
 	local flow_sum_x = flow_field_x[y_max][x_max] - flow_field_x[y_min][x_max] - flow_field_x[y_max][x_min] + flow_field_x[y_min][x_min]
 
 	local flow_field_y = self.framesOptFlow[frameIndx].flow_y
@@ -168,6 +204,34 @@ function Word:getNormalizedDetectionCenter( frameIndx, detectionIndx )
 	local frame_height = self.framesOptFlow[2].flow_x:size(1)
 
 	return torch.Tensor({((x_max + x_min)/2)/frame_width, ((y_max + y_min)/2)/frame_height})
+end
+
+function Word:getNormalizedClosestSideDistance( frameIndx, detectionIndx1, detectionIndx2 )
+	-- Get detection bounds 1
+	local x_min1 = self.detectionsByFrame[frameIndx][detectionIndx1][1]
+	local x_max1 = self.detectionsByFrame[frameIndx][detectionIndx1][3]
+
+	-- Correct for degenerate bounding boxes
+	if x_max1 == x_min1 then x_max1 = x_max1 + 1 end
+
+
+	-- Get detection bounds 2
+	local x_min2 = self.detectionsByFrame[frameIndx][detectionIndx2][1]
+	local x_max2 = self.detectionsByFrame[frameIndx][detectionIndx2][3]
+
+	-- Correct for degenerate bounding boxes
+	if x_max2 == x_min2 then x_max2 = x_max2 + 1 end
+
+
+	-- Compute shortest horizontal distance 
+	if (x_min2 >= x_min1 and x_min2 <= x_max1) or (x_max2 >= x_min1 and x_max2 <= x_max1) or (x_min2 <= x_min1 and x_max2 >= x_max1) then return 0 end
+	-- Get frame dimensions
+	local frame_width = self.framesOptFlow[2].flow_x:size(2)
+	if x_min2 > x_max1 then
+		return (x_min2 - x_max1) / frame_width
+	else
+		return (x_min1 - x_max2) / frame_width
+	end
 end
 
 	 

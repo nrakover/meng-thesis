@@ -16,27 +16,43 @@ function WordLearner:learnWords( output_name, words_to_learn, videos, sentences,
 	local maxIters = max_iterations or 10
 
 	local loglikelihood_list = {}
+	local margin_list = {}
+
+	-- E-Step: calculate posteriors
+	local state_transitions_by_word, priors_per_word, observations_per_word, pos_ll, neg_ll = self:EStep( 0, words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
+	-- Report starting loglikelihood
+	print(('\n\nInitial likelihoods'))
+	print('Positive examples avgerage loglikelihood: '..pos_ll)
+	print('Negative examples avgerage loglikelihood: '..neg_ll)
+	print('Average margin: '..(pos_ll - neg_ll))
+	print('=================================================')
+	table.insert(loglikelihood_list, {pos_ll, neg_ll})
+	table.insert(margin_list, (pos_ll - neg_ll))
+
 
 	-- Perform iterations of EM
 	for iter = 1, maxIters do
 		local start_time = os.time()
 
-		-- E-Step: calculate posteriors
-		local state_transitions_by_word, priors_per_word, observations_per_word, pos_ll, neg_ll = self:EStep( words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
-
-		-- Report loglikelihood of current models
 		print(('\n\nIteration '..iter))
-		print('Positive examples avgerage loglikelihood: '..pos_ll)
-		print('Negative examples avgerage loglikelihood: '..neg_ll)
-		print('Average margin: '..(pos_ll - neg_ll))
 		print('=================================================')
-		table.insert(loglikelihood_list, {pos_ll, neg_ll})
 
 		-- M-Step: re-estimate word models
 		current_word_models = self:MStep( current_word_models, words_to_learn, videos, labels, state_transitions_by_word, priors_per_word, observations_per_word, iter )
 
 		-- Checkpoint
 		torch.save(output_name..('_ckpt_'..iter)..'.t7', current_word_models)
+
+		-- E-Step: calculate posteriors
+		state_transitions_by_word, priors_per_word, observations_per_word, pos_ll, neg_ll = self:EStep( iter, words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
+
+		-- Report loglikelihood of current models
+		print('=================================================')
+		print('Positive examples avgerage loglikelihood: '..pos_ll)
+		print('Negative examples avgerage loglikelihood: '..neg_ll)
+		print('Average margin: '..(pos_ll - neg_ll))
+		table.insert(loglikelihood_list, {pos_ll, neg_ll})
+		table.insert(margin_list, (pos_ll - neg_ll))
 
 		local end_time = os.time()
 		print('=================================================')
@@ -49,11 +65,17 @@ function WordLearner:learnWords( output_name, words_to_learn, videos, sentences,
 	print(loglikelihood_list)
 	print('=================================================\n\n')
 
+	print('\n=================================================')
+	print('Margin sequence:')
+	print(margin_list)
+	print('=================================================\n\n')
+
+	
 	return current_word_models
 end
 
 
-function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
+function WordLearner:EStep( iter, words_to_learn, videos, sentences, labels, current_word_models, filter_detections, words_to_filter_by )
 	local state_transitions_by_word, priors_per_word, observations_per_word = self:initSummaryStatistics( words_to_learn, current_word_models )
 	local pos_examples_loglikelihood = 0
 	local neg_examples_loglikelihood = 0
@@ -73,23 +95,26 @@ function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_w
 
 		-- Aggregate
 		if ll > math.log(0) then -- skip if the likelihood of the example is 0
+			local sentence_likelihood_weight = 1 -- math.exp(ll * (1/100))
 			for j = 1, #words_to_learn do
 				local w = words_to_learn[j]
 				if labels[i] == 1 then
-					state_transitions_by_word[w] = state_transitions_by_word[w] + trans[w]
-					priors_per_word[w] = priors_per_word[w] + priors[w]
+					state_transitions_by_word[w] = state_transitions_by_word[w] + (trans[w] * sentence_likelihood_weight)
+					priors_per_word[w] = priors_per_word[w] + (priors[w] * sentence_likelihood_weight)
 				else
 					-- subtract counts for negative examples
-					state_transitions_by_word[w] = state_transitions_by_word[w] - trans[w]
-					priors_per_word[w] = priors_per_word[w] - priors[w]
+					state_transitions_by_word[w] = state_transitions_by_word[w] - (trans[w] * sentence_likelihood_weight)
+					priors_per_word[w] = priors_per_word[w] - (priors[w] * sentence_likelihood_weight)
 				end
 
 				-- Compile the observation examples for each word state
 				for state = 1, priors[w]:size(1) do
 					for k,v in pairs(obs[w][state]) do
-						table.insert(observations_per_word[w][state].examples, v.example)
-						table.insert(observations_per_word[w][state].labels, labels[i])
-						table.insert(observations_per_word[w][state].weights, v.weight)
+						if v.weight * sentence_likelihood_weight > 0 then -- only use examples with non-zero weight
+							table.insert(observations_per_word[w][state].examples, v.example)
+							table.insert(observations_per_word[w][state].labels, labels[i])
+							table.insert(observations_per_word[w][state].weights, v.weight * sentence_likelihood_weight)
+						end
 					end
 				end
 			end
@@ -102,6 +127,14 @@ function WordLearner:EStep( words_to_learn, videos, sentences, labels, current_w
 				neg_examples_loglikelihood = neg_examples_loglikelihood + ll
 				num_neg_examples = num_neg_examples + 1
 			end
+		else
+			if labels[i] == 1 then
+				print('==> positive example scored -inf')
+			else
+				print('==> negative example scored -inf')
+			end
+			print(sentence)
+			print(video.detections_path)
 		end
 
 		-- Display progress
@@ -153,6 +186,9 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		-- Last state has a trivial fixed distribution (self-loop)
 		new_state_transitions[{{new_state_transitions:size(1)},{}}] = torch.zeros(1,new_state_transitions:size(1))
 		new_state_transitions[{{new_state_transitions:size(1)},{new_state_transitions:size(1)}}] = 1
+		
+		new_state_transitions = current_word_models[w].transitions
+		print(new_state_transitions)
 
 		-- Compute the state priors
 		-- ####################################
@@ -168,7 +204,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		-- ####################################
 		local new_emissions_models = {}
 		for state = 1, state_priors_counts:size(1) do
-			new_emissions_models[state] = doGradientDescentOnModel( current_word_models[w].emissions[state], observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), torch.Tensor(observations_per_word[w][state].weights), math.min(1+iter, 6), nil, true )
+			new_emissions_models[state] = doGradientDescentOnModel( current_word_models[w].emissions[state], observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), torch.Tensor(observations_per_word[w][state].weights), math.min(2+iter, 8), 0.05, true )
 		end
 
 

@@ -36,14 +36,16 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 end
 
 function SentenceTracker:processVideo(video_detections_path, video_features_path, video_optflow_path, filter_detections, word_models, words_to_filter_by)
+	local detections_struct = matio.load(video_detections_path , 'detections_by_frame')
+
 	-- Load the detection proposals
-	self.detectionsByFrame = matio.load(video_detections_path , 'detections_by_frame').detections
+	self.detectionsByFrame = detections_struct.detections
 	
 	-- Load the neural network features from proposals
 	self.detectionFeatures = torch.load(video_features_path)
 
 	-- Convert detections tensor into a table and filter out null detections (and corresponding features)
-	self.detectionsByFrame, self.detectionFeatures = self:detectionsTensorToTable(self.detectionsByFrame, self.detectionFeatures)
+	self.detectionsByFrame, self.detectionFeatures, person_detector_indices = self:detectionsTensorToTable(self.detectionsByFrame, self.detectionFeatures, detections_struct.person_detector_indices)
 
 	self.numFrames = #self.detectionsByFrame
 
@@ -51,17 +53,16 @@ function SentenceTracker:processVideo(video_detections_path, video_features_path
 	self.detectionsOptFlow = torch.load(video_optflow_path)
 
 	if filter_detections then
-		self.detectionsByFrame, self.detectionFeatures, self.detectionIndicesPerRole = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, self.detectionsOptFlow, word_models, words_to_filter_by, 4 )
-		print(self.detectionIndicesPerRole)
+		self.detectionsByFrame, self.detectionFeatures, self.detectionIndicesPerRole = self:filterDetections( self.detectionsByFrame, self.detectionFeatures, self.detectionsOptFlow, word_models, words_to_filter_by, 4, person_detector_indices )
 	else
 		self.detectionIndicesPerRole = {}
 		for f = 1, self.numFrames do
 			self.detectionIndicesPerRole[f] = {}
 			for r = 1, self.numRoles do
-				self.detectionIndicesPerRole[f][r] = {}
-				for i = 1, #self.detectionsByFrame[f] do
-					table.insert(self.detectionIndicesPerRole[f][r], i)
-				end
+				self.detectionIndicesPerRole[f][r] = {r}	-- ############################# CHANGE BACK
+				-- for i = 1, #self.detectionsByFrame[f] do
+				-- 	table.insert(self.detectionIndicesPerRole[f][r], i)
+				-- end
 			end
 		end
 	end
@@ -97,7 +98,7 @@ end
 -- ##########################################
 
 function SentenceTracker:getBestTrack()
-	local path = self:getBestPath()
+	local path, score = self:getBestPath()
 
 	local track = {}
 	for frameIndx = 1, #path do
@@ -108,7 +109,7 @@ function SentenceTracker:getBestTrack()
 			table.insert(track[frameIndx], self.detectionsByFrame[frameIndx][detIndx]:clone())
 		end
 	end
-	return track
+	return track, score
 end
 
 function SentenceTracker:getBestPath()
@@ -157,7 +158,7 @@ function SentenceTracker:partialEStep( words_to_learn )
 				-- Compute adjacent node posteriors
 				local transitions_ll = self:computeTracksTransitionScore( frameIndx+1, p, q ) + self:computeWordsTransitionScore( frameIndx+1, p, q )
 				local observations_ll = self:computeTracksObservationScore( frameIndx, p ) + self:computeWordsObservationScore( frameIndx, p )
-				local posterior_p_to_q = math.exp( ( self:logAlpha(frameIndx, p) + transitions_ll + observations_ll + self:logBeta(frameIndx+1, q) ) - Z )
+				local posterior_p_to_q = math.exp( (((-Z + self:logAlpha(frameIndx, p)) + transitions_ll) + observations_ll) + self:logBeta(frameIndx+1, q)  )
 
 				-- Accumulate the posterior
 				state_transitions_by_word, priors_per_word, observations_per_word = self:accumulatePosterior( posterior_p_to_q, frameIndx, p, q, state_transitions_by_word, priors_per_word, observations_per_word )
@@ -247,14 +248,28 @@ function SentenceTracker:initSummaryStatistics( words_to_learn )
 end
 
 function SentenceTracker:logTotalProbabilityOfSequence()
-	local Z = 0
+	-- local Z = 0
 	local p = self:startNode()
+	local list_for_LSE = {}
 	while p ~= nil do
-		Z = Z + math.exp( self:logAlpha(1,p) + self:logBeta(1,p) )
+		table.insert(list_for_LSE, self:logAlpha(1,p) + self:logBeta(1,p))
+		-- Z = Z + math.exp( self:logAlpha(1,p) + self:logBeta(1,p) )
 		-- Next node
 		p = self:nextNode(1,p)
 	end
-	return math.log(Z)
+	-- print('LSE = '..self:logSumExp(list_for_LSE))
+	-- print('Z = '..math.log(Z))
+	-- return math.log(Z)
+	return self:logSumExp(list_for_LSE)
+end
+
+function SentenceTracker:logSumExp( X_vals )
+	local X = torch.DoubleTensor(X_vals)
+	local max_x = X:max()
+
+	if not (max_x > math.log(0)) then return math.log(0) end -- edge case when all elements are -inf
+
+	return max_x + math.log( (X[torch.gt(X, math.log(0))] - max_x):exp():sum() )
 end
 
 
@@ -281,7 +296,7 @@ function SentenceTracker:logAlpha( k, v )
 	end
 
 	-- Recursive Case:
-	local marginal_likelihood = 0
+	local list_for_LSE = {}
 	-- Iterate over possibe previous nodes
 	local u = self:startNode()
 	while u ~= nil do
@@ -290,14 +305,14 @@ function SentenceTracker:logAlpha( k, v )
 		local ll_for_u = self:logAlpha( k-1, u) + transitions_ll + observations_ll
 
 		-- Accumulate
-		marginal_likelihood = marginal_likelihood + math.exp(ll_for_u)
+		table.insert(list_for_LSE, ll_for_u)
 		-- Next node
 		u = self:nextNode(k-1, u)
 	end
 
 	-- Memoize and return
-	self.alphaMemo[key] = math.log(marginal_likelihood)
-	return math.log(marginal_likelihood)
+	self.alphaMemo[key] = self:logSumExp(list_for_LSE)
+	return self.alphaMemo[key]
 
 end
 
@@ -319,7 +334,7 @@ function SentenceTracker:logBeta( k, v )
 	end
 
 	-- Recursive Case:
-	local marginal_likelihood = 0
+	local list_for_LSE = {}
 	-- Iterate over possibe next nodes
 	local u = self:startNode()
 	while u ~= nil do
@@ -327,15 +342,21 @@ function SentenceTracker:logBeta( k, v )
 		local observations_ll = self:computeTracksObservationScore( k, v ) + self:computeWordsObservationScore( k, v )
 		local ll_for_u = self:logBeta( k+1, u) + transitions_ll + observations_ll
 
+		-- if k == self.numFrames - 2 then print('transition: ', transitions_ll) end
+		-- if k == self.numFrames - 2 then print('observations: ', observations_ll) end
+		-- if k == self.numFrames - 2 then print('total: ', ll_for_u) end
+
 		-- Accumulate
-		marginal_likelihood = marginal_likelihood + math.exp(ll_for_u)
+		table.insert(list_for_LSE, ll_for_u)
 		-- Next node
 		u = self:nextNode(k+1, u)
 	end
 
+	-- if k == self.numFrames - 2 then print(key, self:logSumExp(list_for_LSE)) end
+
 	-- Memoize and return
-	self.betaMemo[key] = math.log(marginal_likelihood)
-	return math.log(marginal_likelihood)
+	self.betaMemo[key] = self:logSumExp(list_for_LSE)
+	return self.betaMemo[key]
 end
 
 
@@ -574,18 +595,18 @@ end
 -- #####    FILTERING OBJECT PROPOSALS   ####
 -- ##########################################
 
-function SentenceTracker:filterDetections( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role)
+function SentenceTracker:filterDetections( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role, person_detection_indices )
 	
 	-- Do first pass, overgenerating for each noun using forward-projection, without scoring two-argument words
-	local filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, 2*num_desired_proposals_per_role, true, false, 10 )
+	local filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, 5*num_desired_proposals_per_role, true, false, 10, person_detection_indices )
 
 	-- Do second pass, scoring with two-argument words, no forward-projection and narrowing down to the desired number of proposals
-	return self:doSinglePassOfFilteringWithOptions( filtered_detections, filtered_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role, false, false, 20 )
+	-- filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( filtered_detections, filtered_features, optical_flow, word_models, words_to_filter_by, 5*num_desired_proposals_per_role, false, false, 20 )
 
-	-- return filtered_detections, filtered_features, detection_indices_per_role
+	return filtered_detections, filtered_features, self:nonMaximalSuppression( detection_indices_per_role, filtered_detections, num_desired_proposals_per_role )
 end
 
-function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, K, do_forward_project, score_with_two_arg_words, tracker_exponent )
+function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, K, do_forward_project, score_with_two_arg_words, tracker_exponent, person_detection_indices )
 	local filtered_detections = {}
 	local filtered_features = {}
 	local detection_indices_per_role = {}
@@ -593,11 +614,28 @@ function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_f
 	local scores_by_role_per_frame = {}
 	local tracker = Tracker:new(all_detections_by_frame, optical_flow, tracker_exponent)
 
-	-- For each frame, select the best detections
+	local person_roles = {}
+	if person_detection_indices ~= nil then
+		for i,w in ipairs(self.positionToWord) do
+			if w == 'person' then
+				person_roles[self.positionToRoles[i][1]] = true
+			end
+		end
+	end
+
+	-- Score detections with word models
 	for fIndx = 1, self.numFrames do
 		
 		-- Score with single-argument, single-state words and the tracker
 		scores_by_role_per_frame[fIndx] = torch.Tensor(self.numRoles, #all_detections_by_frame[fIndx])
+
+		-- Knock out non-person detections for all person roles
+		for r = 1, self.numRoles do
+			if person_roles[r] then
+				scores_by_role_per_frame[fIndx][{{r}, {1, person_detection_indices[fIndx][1]-1}}] = math.log(0)
+			end
+		end
+
 		-- Iterate over detections
 		for detIndx = 1, #all_detections_by_frame[fIndx] do
 			local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
@@ -605,10 +643,10 @@ function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_f
 			-- Score the detection with the single-argument word models
 			scores_by_role_per_frame = self:scoreWithStaticWords( fIndx, detIndx, features, scores_by_role_per_frame, word_models, words_to_filter_by )
 
-			-- Score the detection with the tracker
-			if fIndx > 1 then
-				scores_by_role_per_frame = self:scoreWithTracker( fIndx, detIndx, scores_by_role_per_frame, tracker, all_detections_by_frame )
-			end
+			-- -- Score the detection with the tracker
+			-- if fIndx > 1 then
+			-- 	scores_by_role_per_frame = self:scoreWithTracker( fIndx, detIndx, scores_by_role_per_frame, tracker, all_detections_by_frame )
+			-- end
 		end
 
 		-- Score with two-argument words
@@ -616,6 +654,20 @@ function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_f
 			scores_by_role_per_frame = self:scoreWithTwoArgumentWords( scores_by_role_per_frame, all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by )
 		end
 
+		-- -- Take top K from each role
+		-- filtered_detections, filtered_features, detection_indices_per_role = self:getTopKPerRole( K, fIndx, detection_indices_per_role, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
+	end
+
+	-- Score the detection with the tracker
+	for fIndx = self.numFrames, 2, -1 do
+		-- Iterate over detections
+		for detIndx = 1, #all_detections_by_frame[fIndx] do
+			scores_by_role_per_frame = self:scoreWithTracker( fIndx, detIndx, scores_by_role_per_frame, tracker, all_detections_by_frame )
+		end
+	end
+
+	-- For each frame, select the best detections
+	for fIndx = 1, self.numFrames do
 		-- Take top K from each role
 		filtered_detections, filtered_features, detection_indices_per_role = self:getTopKPerRole( K, fIndx, detection_indices_per_role, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
 	end
@@ -704,7 +756,7 @@ function SentenceTracker:getTopKPerRole( K, fIndx, detection_indices_per_role, f
 
 		detection_indices_per_role[fIndx][r] = {}
 		-- Take the top K detections
-		for i = 1, K do
+		for i = 1, math.min(K,sorted_indices:size(2)) do
 			local detIndx = sorted_indices[1][i]
 			if detections_included[detIndx] == nil then -- prevents repeated detections
 				detections_included[detIndx] = #filtered_detections[fIndx] + 1
@@ -753,6 +805,8 @@ function SentenceTracker:addForwardProjectedProposals( tracker, detection_indice
 			local old_bounds = filtered_detections[fIndx-1][i]:clone()
 			if old_bounds[4] == old_bounds[2] then old_bounds[4] = old_bounds[4] + 1 end
 			if old_bounds[3] == old_bounds[1] then old_bounds[3] = old_bounds[3] + 1 end
+			old_bounds[3] = math.min( optical_flow[fIndx].flow_x:size(2), old_bounds[3] )
+			old_bounds[4] = math.min( optical_flow[fIndx].flow_x:size(1), old_bounds[4] )
 
 			-- Get optical flow
 			local avg_flow_x = tracker:extractAvgFlowFromDistanceTransform(optical_flow[fIndx].flow_x, old_bounds[1], old_bounds[2], old_bounds[3], old_bounds[4])
@@ -833,20 +887,28 @@ function SentenceTracker:findClosestProposal( projected_proposal, candidates )
 	return closest_proposal
 end
 
-function SentenceTracker:detectionsTensorToTable( detections_by_frame, detection_features )
+function SentenceTracker:detectionsTensorToTable( detections_by_frame, detection_features, person_detector_indices )
 	local detections_table = {}
 	local filtered_detection_features = {}
 	for fIndx = 1, detections_by_frame:size(1) do
 		detections_table[fIndx] = {}
 		filtered_detection_features[fIndx] = {}
+		local num_null_detections = 0
 		for detIndx = 1, detections_by_frame:size(2) do
 			if not self:isNullDetection(detections_by_frame[fIndx][detIndx]) then
 				table.insert(detections_table[fIndx], detections_by_frame[fIndx][detIndx]:clone())
 				table.insert(filtered_detection_features[fIndx], detection_features[fIndx][detIndx]:clone())
+			elseif person_detector_indices ~= null and detIndx < person_detector_indices[fIndx][1] then
+				num_null_detections = num_null_detections + 1
 			end
 		end
+		if person_detector_indices ~= null then
+			person_detector_indices[fIndx][1] = person_detector_indices[fIndx][1] - num_null_detections
+			person_detector_indices[fIndx][2] = person_detector_indices[fIndx][2] - num_null_detections
+			assert(person_detector_indices[fIndx][2] == #detections_table[fIndx], ('person_detector_indices[fIndx][2] = '..person_detector_indices[fIndx][2])..(' , #detections_table[fIndx] = '..#detections_table[fIndx]))
+		end
 	end
-	return detections_table, filtered_detection_features
+	return detections_table, filtered_detection_features, person_detector_indices
 end
 
 function SentenceTracker:isNullDetection( detection )
@@ -857,6 +919,88 @@ function SentenceTracker:isNullDetection( detection )
 	local y_max = detection[4]
 
 	return (x_min == x_max and y_min == y_max)
+end
+
+function SentenceTracker:nonMaximalSuppression( detection_indices_per_role, filtered_detections, num_desired_proposals_per_role, tracks_to_omit )
+	-- Detection indices after non-maximal supression
+	local suppressed_detection_indices_per_role = {}
+
+	-- Iterate over each frame
+	for fIndx = 1, self.numFrames do
+		suppressed_detection_indices_per_role[fIndx] = {}
+		-- Iterate over each role
+		for r = 1, self.numRoles do
+			suppressed_detection_indices_per_role[fIndx][r] = {}
+			local knocked_out_detections = {} -- false/nil for values not knocked out, true for knocked out values
+			local next_viable_indx = 1
+
+			-- Optionally knock out the specified tracks
+			if tracks_to_omit ~= nil then
+				-- Iterate over forbidden detections
+				for i = 1, #tracks_to_omit[fIndx] do
+					local suppressing_box = tracks_to_omit[fIndx][i]
+					-- Suppress the specified proposals
+					for j = 1, #detection_indices_per_role[fIndx][r] do
+						if not knocked_out_detections[j] then
+							local box_to_suppress = filtered_detections[fIndx][detection_indices_per_role[fIndx][r][j]]
+							knocked_out_detections[j] = self:shouldSuppress( suppressing_box, box_to_suppress, 0.01 )
+						end
+					end
+				end
+			end
+
+			-- Select the indices
+			for i = 1, num_desired_proposals_per_role do
+				-- Find the best index that hasn't been knocked out
+				for j = next_viable_indx, #detection_indices_per_role[fIndx][r] do
+					if not knocked_out_detections[j] then
+						-- Add it to the selected indices
+						table.insert(suppressed_detection_indices_per_role[fIndx][r], detection_indices_per_role[fIndx][r][j])
+						-- Supress the indices below it
+						local suppressing_box = filtered_detections[fIndx][detection_indices_per_role[fIndx][r][j]]
+						for k = j + 1, #detection_indices_per_role[fIndx][r] do
+							if not knocked_out_detections[k] then
+								local box_to_suppress = filtered_detections[fIndx][detection_indices_per_role[fIndx][r][k]]
+								knocked_out_detections[k] = self:shouldSuppress( suppressing_box, box_to_suppress )
+							end
+						end
+
+						next_viable_indx = j + 1
+						break
+					end
+				end
+			end
+		end
+	end
+	return suppressed_detection_indices_per_role
+end
+
+function SentenceTracker:shouldSuppress( box_a, box_b, threshold )
+	threshold = threshold or 0.25
+
+	local A_x_min = box_a[1]
+	local A_y_min = box_a[2]
+	local A_x_max = box_a[3]
+	local A_y_max = box_a[4]
+
+	local B_x_min = box_b[1]
+	local B_y_min = box_b[2]
+	local B_x_max = box_b[3]
+	local B_y_max = box_b[4]
+
+	local I_x_min = math.max(A_x_min, B_x_min)
+	local I_x_max = math.min(A_x_max, B_x_max)
+	local I_y_min = math.max(A_y_min, B_y_min)
+	local I_y_max = math.min(A_y_max, B_y_max)
+	local intersection = math.max(0, I_x_max - I_x_min) * math.max(0, I_y_max - I_y_min)
+
+	local union = (A_x_max - A_x_min) * (A_y_max - A_y_min)  +  (B_x_max - B_x_min) * (B_y_max - B_y_min)  -  intersection
+
+	local IoU = intersection / union
+
+	if union == 0 then return true end -- edge case
+
+	return IoU > threshold
 end
 
 
