@@ -16,18 +16,19 @@ end
 -- ###############
 -- ##	Train 	##
 -- ###############
-function trainLinearModel( examples, labels, weights, max_epochs, verbose )
+function trainLinearModel( examples, labels, weights, max_epochs, verbose, adagrad )
 	-- Define model
 	local model = nn.Sequential()
 	local num_inputs = examples[1]:size(1)
 	model:add(nn.Linear(num_inputs, 1)) -- linear regression layer
 	model:add(nn.Sigmoid()) -- signoid for squeezing into probability
 
-	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, 0.01, verbose )
+	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, 0.01, verbose, adagrad )
 end
 
-function doGradientDescentOnModel( model, examples, labels, weights, max_epochs, learning_rate, verbose )
+function doGradientDescentOnModel( model, examples, labels, weights, max_epochs, learning_rate, verbose, adagrad )
 	verbose = verbose or false
+	adagrad = adagrad or false
 
 	-- If not provided, the starting learning rate is 0.01
 	learning_rate = learning_rate or 0.01
@@ -63,6 +64,8 @@ function doGradientDescentOnModel( model, examples, labels, weights, max_epochs,
 	local max_epochs = max_epochs or 10
 	local prev_err = 0
 	local exit_threshold = 1e-8
+	local historical_gradient_w = torch.zeros(model.modules[1].weight:size())
+	local historical_gradient_b = torch.zeros(1)
 	for epoch = 1, max_epochs do
 		local lr = learning_rate / epoch
 		local total_err = 0
@@ -76,7 +79,13 @@ function doGradientDescentOnModel( model, examples, labels, weights, max_epochs,
 			local target = labels[indx]
 			local w = weights[indx]
 
-			total_err = total_err + w*gradUpdate(model, x, torch.DoubleTensor({target}), criterion, w, lr)
+			local e = 0
+			if adagrad then
+				e, historical_gradient_w, historical_gradient_b = gradUpdateWithAdagrad(model, x, torch.DoubleTensor({target}), criterion, w, learning_rate, historical_gradient_w, historical_gradient_b)
+			else
+				e = gradUpdate(model, x, torch.DoubleTensor({target}), criterion, w, lr)
+			end
+			total_err = total_err + w*e
 			total_weight = total_weight + w
 		end
 
@@ -107,6 +116,29 @@ function gradUpdate(mlp, x, target, criterion, weight, learning_rate)
 	mlp:updateParameters(weight * learning_rate)
 
 	return math.abs(err)
+end
+
+
+local SMOOTH_FACTOR = 1e-6
+function gradUpdateWithAdagrad(mlp, x, target, criterion, weight, learning_rate, historical_gradient_w, historical_gradient_b)
+	local pred = mlp:forward(x)
+	local err = criterion:forward(pred, target)
+	local gradCriterion = criterion:backward(pred, target)
+	mlp:zeroGradParameters()
+	mlp:backward(x, gradCriterion)
+
+	local _, gradParams = mlp:parameters()
+	-- Update historical gradients
+	historical_gradient_w:add( torch.pow(gradParams[1], 2) )
+	historical_gradient_b:add( torch.pow(gradParams[2], 2) )
+	-- Adjust gradients according to history
+	gradParams[1]:cdiv( torch.sqrt(historical_gradient_w) + SMOOTH_FACTOR )
+	gradParams[2]:cdiv( torch.sqrt(historical_gradient_b) + SMOOTH_FACTOR )
+
+	-- Update params
+	mlp:updateParameters(weight * learning_rate)
+
+	return math.abs(err), historical_gradient_w, historical_gradient_b
 end
 
 

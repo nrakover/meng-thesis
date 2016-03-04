@@ -3,8 +3,8 @@ dofile('/local/nrakover/meng/classifiers.lua')
 dofile('/local/nrakover/meng/train-test-split.lua')
 
 
-local function trainAndTest(train_data, test_data, num_epochs)
-	local model = trainLinearModel(train_data.data, train_data.label, nil, num_epochs, true)
+local function trainAndTest(train_data, test_data, num_epochs, adagrad)
+	local model = trainLinearModel(train_data.data, train_data.label, nil, num_epochs, true, adagrad)
 
 	local acc = scoreTestSet(model, test_data.data, test_data.label)
 	print('------------------------------------')
@@ -24,24 +24,20 @@ local function testPersonClassifiers()
 	print('====          PERSON            ====')
 	print('====================================')
 
+	local epochs = {2,3,4,5,6,7,8,10}
+	for i,n in ipairs(epochs) do
+		print('Video corpus data: '..(n..' epochs'))
+		trainAndTest(person_train, person_test, n)
+		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
+		trainAndTest(person_train, person_test, n, true)
+	end
 
-	print('Video corpus data: 2 epochs')
-	trainAndTest(person_train, person_test, 2)
-	print('Video corpus data: 3 epochs')
-	trainAndTest(person_train, person_test, 3)
-	print('Video corpus data: 4 epochs')
-	trainAndTest(person_train, person_test, 4)
-	print('Video corpus data: 5 epochs')
-	trainAndTest(person_train, person_test, 5)
-	print('Video corpus data: 6 epochs')
-	trainAndTest(person_train, person_test, 6)
-
-	print('VOC2007 data: 10 epochs')
-	trainAndTest(VOC_person_data, person_test, 10)
-	print('VOC2007 data: 15 epochs')
-	trainAndTest(VOC_person_data, person_test, 15)
-	print('VOC2007 data: 20 epochs')
-	trainAndTest(VOC_person_data, person_test, 20)
+	-- print('VOC2007 data: 10 epochs')
+	-- trainAndTest(VOC_person_data, person_test, 10)
+	-- print('VOC2007 data: 15 epochs')
+	-- trainAndTest(VOC_person_data, person_test, 15)
+	-- print('VOC2007 data: 20 epochs')
+	-- trainAndTest(VOC_person_data, person_test, 20)
 end
 
 local function testBackpackClassifiers()
@@ -54,18 +50,14 @@ local function testBackpackClassifiers()
 	print('====         BACKPACK           ====')
 	print('====================================')
 
-	print('Video corpus data: 2 epochs')
-	trainAndTest(backpack_train, backpack_test, 2)
-	print('Video corpus data: 3 epochs')
-	trainAndTest(backpack_train, backpack_test, 3)
-	print('Video corpus data: 4 epochs')
-	trainAndTest(backpack_train, backpack_test, 4)
-	print('Video corpus data: 5 epochs')
-	trainAndTest(backpack_train, backpack_test, 5)
-	print('Video corpus data: 6 epochs')
-	trainAndTest(backpack_train, backpack_test, 6)
-	print('Video corpus data: 10 epochs')
-	trainAndTest(backpack_train, backpack_test, 10)
+	local epochs = {2,3,4,5,6,10}
+	for i,n in ipairs(epochs) do
+		print('Video corpus data: '..(n..' epochs'))
+		trainAndTest(backpack_train, backpack_test, n)
+		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
+		trainAndTest(backpack_train, backpack_test, n, true)
+	end
+
 end
 
 local function testChairClassifiers()
@@ -78,18 +70,13 @@ local function testChairClassifiers()
 	print('====           CHAIR            ====')
 	print('====================================')
 
-	print('Video corpus data: 2 epochs')
-	trainAndTest(chair_train, chair_test, 2)
-	print('Video corpus data: 3 epochs')
-	trainAndTest(chair_train, chair_test, 3)
-	print('Video corpus data: 4 epochs')
-	trainAndTest(chair_train, chair_test, 4)
-	print('Video corpus data: 5 epochs')
-	trainAndTest(chair_train, chair_test, 5)
-	print('Video corpus data: 6 epochs')
-	trainAndTest(chair_train, chair_test, 6)
-	print('Video corpus data: 10 epochs')
-	trainAndTest(chair_train, chair_test, 10)
+	local epochs = {2,3,4,5,6,10}
+	for i,n in ipairs(epochs) do
+		print('Video corpus data: '..(n..' epochs'))
+		trainAndTest(chair_train, chair_test, n)
+		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
+		trainAndTest(chair_train, chair_test, n, true)
+	end	
 end
 
 local function testTrashbinClassifiers()
@@ -102,18 +89,13 @@ local function testTrashbinClassifiers()
 	print('====         TRASH_BIN          ====')
 	print('====================================')
 
-	print('Video corpus data: 2 epochs')
-	trainAndTest(trashbin_train, trashbin_test, 2)
-	print('Video corpus data: 3 epochs')
-	trainAndTest(trashbin_train, trashbin_test, 3)
-	print('Video corpus data: 4 epochs')
-	trainAndTest(trashbin_train, trashbin_test, 4)
-	print('Video corpus data: 5 epochs')
-	trainAndTest(trashbin_train, trashbin_test, 5)
-	print('Video corpus data: 6 epochs')
-	trainAndTest(trashbin_train, trashbin_test, 6)
-	print('Video corpus data: 10 epochs')
-	trainAndTest(trashbin_train, trashbin_test, 10)
+	local epochs = {2,3,4,5,6,10}
+	for i,n in ipairs(epochs) do
+		print('Video corpus data: '..(n..' epochs'))
+		trainAndTest(trashbin_train, trashbin_test, n)
+		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
+		trainAndTest(trashbin_train, trashbin_test, n, true)
+	end
 end
 
 local function testBlackClassifiers()
@@ -126,18 +108,13 @@ local function testBlackClassifiers()
 	print('====           BLACK            ====')
 	print('====================================')
 
-	print('Imagenet data: 2 epochs')
-	trainAndTest(color_black_train, color_black_test, 2)
-	print('Imagenet data: 3 epochs')
-	trainAndTest(color_black_train, color_black_test, 3)
-	print('Imagenet data: 4 epochs')
-	trainAndTest(color_black_train, color_black_test, 4)
-	print('Imagenet data: 5 epochs')
-	trainAndTest(color_black_train, color_black_test, 5)
-	print('Imagenet data: 6 epochs')
-	trainAndTest(color_black_train, color_black_test, 6)
-	print('Imagenet data: 10 epochs')
-	trainAndTest(color_black_train, color_black_test, 10)
+	local epochs = {2,3,4,5,6,10}
+	for i,n in ipairs(epochs) do
+		print('Video corpus data: '..(n..' epochs'))
+		trainAndTest(color_black_train, color_black_test, n)
+		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
+		trainAndTest(color_black_train, color_black_test, n, true)
+	end
 end
 
 local function testBlueClassifiers()
@@ -212,14 +189,14 @@ local function testGrayClassifiers()
 	trainAndTest(color_gray_train, color_gray_test, 10)
 end
 
-testGrayClassifiers()
-testRedClassifiers()
-testBlueClassifiers()
-testBlackClassifiers()
-testChairClassifiers()
+-- testGrayClassifiers()
+-- testRedClassifiers()
+-- testBlueClassifiers()
+-- testBlackClassifiers()
+testPersonClassifiers()
 testTrashbinClassifiers()
 testBackpackClassifiers()
-testPersonClassifiers()
+testChairClassifiers()
 
 
 
