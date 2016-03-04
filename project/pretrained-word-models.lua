@@ -15,7 +15,7 @@ function getClassifier(dataset, num_epochs)
 	-- local classifier = liblinear.train(train_full, '-s 0 -q');
 	-- local labels,accuracy,prob = liblinear.predict(train_full, classifier, '-b 1');
 
-	local classifier = trainLinearModel(training_data.data, training_data.label, nil, num_epochs, true)
+	local classifier = trainLinearModel(training_data.data, training_data.label, nil, num_epochs, true, true)
 
 	return classifier
 end
@@ -61,7 +61,7 @@ function getChairDetector()
 		print("Using cached 'chair' detector")
 	else
 		print("Training 'chair' detector")
-		chair_classifier = getClassifier('datasets/video-corpus/object_images/chair_dataset.t7', 4)
+		chair_classifier = getClassifier('datasets/video-corpus/object_images/chair_dataset.t7', 5)
 		-- chair_classifier = getClassifier('datasets/VOC2007/chair_dataset.t7')
 		torch.save(DETECTORS_PATH..'chair.t7', chair_classifier)
 	end
@@ -75,7 +75,7 @@ function getTrashbinDetector()
 		print("Using cached 'trash_bin' detector")
 	else
 		print("Training 'trash_bin' detector")
-		trash_bin_classifier = getClassifier('datasets/video-corpus/object_images/trash_bin_dataset.t7', 3)
+		trash_bin_classifier = getClassifier('datasets/video-corpus/object_images/trash_bin_dataset.t7', 4)
 		torch.save(DETECTORS_PATH..'trash_bin.t7', trash_bin_classifier)
 	end
 	return {emissions={trash_bin_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
