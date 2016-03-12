@@ -84,6 +84,8 @@ function WordLearner:EStep( iter, words_to_learn, videos, sentences, labels, cur
 
 	-- Iterate over examples
 	for i = 1, #videos do
+		-- print(videos[i].features_path)
+
 		-- Instantiate sentence tracker
 		local sentence = sentences[i]
 		local video = videos[i]
@@ -95,7 +97,7 @@ function WordLearner:EStep( iter, words_to_learn, videos, sentences, labels, cur
 
 		-- Aggregate
 		if ll > math.log(0) then -- skip if the likelihood of the example is 0
-			local sentence_likelihood_weight = 1 -- math.exp(ll * (1/100))
+			local sentence_likelihood_weight = 1 -- math.exp(ll * (1/1000))
 			for j = 1, #words_to_learn do
 				local w = words_to_learn[j]
 				if labels[i] == 1 then
@@ -187,7 +189,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		new_state_transitions[{{new_state_transitions:size(1)},{}}] = torch.zeros(1,new_state_transitions:size(1))
 		new_state_transitions[{{new_state_transitions:size(1)},{new_state_transitions:size(1)}}] = 1
 		
-		new_state_transitions = current_word_models[w].transitions
+		-- new_state_transitions = current_word_models[w].transitions
 		print(new_state_transitions)
 
 		-- Compute the state priors
@@ -204,7 +206,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		-- ####################################
 		local new_emissions_models = {}
 		for state = 1, state_priors_counts:size(1) do
-			new_emissions_models[state] = doGradientDescentOnModel( current_word_models[w].emissions[state], observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), torch.Tensor(observations_per_word[w][state].weights), math.min(2+iter, 8), 0.05, true )
+			new_emissions_models[state] = doGradientDescentOnModel( current_word_models[w].emissions[state], observations_per_word[w][state].examples, torch.Tensor(observations_per_word[w][state].labels), torch.Tensor(observations_per_word[w][state].weights), math.min(2+iter, 8), 0.05, true, true )
 		end
 
 
