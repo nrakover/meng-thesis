@@ -16,14 +16,14 @@ end
 -- ###############
 -- ##	Train 	##
 -- ###############
-function trainLinearModel( examples, labels, weights, max_epochs, verbose, adagrad )
+function trainLinearModel( examples, labels, weights, max_epochs, learning_rate, verbose, adagrad )
 	-- Define model
 	local model = nn.Sequential()
 	local num_inputs = examples[1]:size(1)
 	model:add(nn.Linear(num_inputs, 1)) -- linear regression layer
 	model:add(nn.Sigmoid()) -- signoid for squeezing into probability
 
-	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, 0.01, verbose, adagrad )
+	return doGradientDescentOnModel( model, examples, labels, weights, max_epochs, learning_rate, verbose, adagrad )
 end
 
 function doGradientDescentOnModel( model, examples, labels, weights, max_epochs, learning_rate, verbose, adagrad )

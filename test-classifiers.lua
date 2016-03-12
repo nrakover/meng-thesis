@@ -3,10 +3,18 @@ dofile('/local/nrakover/meng/classifiers.lua')
 dofile('/local/nrakover/meng/train-test-split.lua')
 
 
-local function trainAndTest(train_data, test_data, num_epochs, adagrad)
-	local model = trainLinearModel(train_data.data, train_data.label, nil, num_epochs, true, adagrad)
+local function scaleFeatures( data, scale_factor )
+	local scaled_data = {}
+	for i = 1, #data do
+		scaled_data[i] = data[i] * scale_factor
+	end
+	return scaled_data
+end
 
-	local acc = scoreTestSet(model, test_data.data, test_data.label)
+local function trainAndTest(train_data, test_data, num_epochs, adagrad)
+	local model = trainLinearModel(scaleFeatures(train_data.data, 0.1), train_data.label, nil, num_epochs, 0.01, true, adagrad)
+
+	local acc = scoreTestSet(model, scaleFeatures(test_data.data, 0.1), test_data.label)
 	print('------------------------------------')
 	print('Test accuracy = '..acc)
 	print('------------------------------------\n')
@@ -24,7 +32,7 @@ local function testPersonClassifiers()
 	print('====          PERSON            ====')
 	print('====================================')
 
-	local epochs = {2,3,4,5,6,7,8,10}
+	local epochs = {5}
 	for i,n in ipairs(epochs) do
 		print('Video corpus data: '..(n..' epochs'))
 		trainAndTest(person_train, person_test, n)
@@ -50,7 +58,7 @@ local function testBackpackClassifiers()
 	print('====         BACKPACK           ====')
 	print('====================================')
 
-	local epochs = {2,3,4,5,6,10}
+	local epochs = {3,5}
 	for i,n in ipairs(epochs) do
 		print('Video corpus data: '..(n..' epochs'))
 		trainAndTest(backpack_train, backpack_test, n)
@@ -70,7 +78,7 @@ local function testChairClassifiers()
 	print('====           CHAIR            ====')
 	print('====================================')
 
-	local epochs = {2,3,4,5,6,10}
+	local epochs = {3,4,5}
 	for i,n in ipairs(epochs) do
 		print('Video corpus data: '..(n..' epochs'))
 		trainAndTest(chair_train, chair_test, n)
@@ -89,7 +97,7 @@ local function testTrashbinClassifiers()
 	print('====         TRASH_BIN          ====')
 	print('====================================')
 
-	local epochs = {2,3,4,5,6,10}
+	local epochs = {3,5}
 	for i,n in ipairs(epochs) do
 		print('Video corpus data: '..(n..' epochs'))
 		trainAndTest(trashbin_train, trashbin_test, n)
@@ -151,18 +159,13 @@ local function testRedClassifiers()
 	print('====            RED             ====')
 	print('====================================')
 
-	print('Imagenet data: 2 epochs')
-	trainAndTest(color_red_train, color_red_test, 2)
-	print('Imagenet data: 3 epochs')
-	trainAndTest(color_red_train, color_red_test, 3)
-	print('Imagenet data: 4 epochs')
-	trainAndTest(color_red_train, color_red_test, 4)
-	print('Imagenet data: 5 epochs')
-	trainAndTest(color_red_train, color_red_test, 5)
-	print('Imagenet data: 6 epochs')
-	trainAndTest(color_red_train, color_red_test, 6)
-	print('Imagenet data: 10 epochs')
-	trainAndTest(color_red_train, color_red_test, 10)
+	local epochs = {2,3,4,5,6,10}
+	for i,n in ipairs(epochs) do
+		print('Imagenet data: '..(n..' epochs'))
+		trainAndTest(color_red_train, color_red_test, n)
+		print('Imagenet data: '..(n..' epochs with ADAGRAD'))
+		trainAndTest(color_red_train, color_red_test, n, true)
+	end
 end
 
 local function testGrayClassifiers()
@@ -193,10 +196,10 @@ end
 -- testRedClassifiers()
 -- testBlueClassifiers()
 -- testBlackClassifiers()
-testPersonClassifiers()
-testTrashbinClassifiers()
-testBackpackClassifiers()
+-- testTrashbinClassifiers()
+-- testBackpackClassifiers()
 testChairClassifiers()
+-- testPersonClassifiers()
 
 
 

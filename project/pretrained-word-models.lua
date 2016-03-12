@@ -8,6 +8,14 @@ dofile('classifiers.lua')
 local DETECTORS_PATH = '/local/nrakover/meng/detectors-depot/'
 
 
+local function scaleFeatures( data, scale_factor )
+	local scaled_data = {}
+	for i = 1, #data do
+		scaled_data[i] = data[i] * scale_factor
+	end
+	return scaled_data
+end
+
 function getClassifier(dataset, num_epochs)
 	local training_data = torch.load(dataset);
 	
@@ -15,7 +23,8 @@ function getClassifier(dataset, num_epochs)
 	-- local classifier = liblinear.train(train_full, '-s 0 -q');
 	-- local labels,accuracy,prob = liblinear.predict(train_full, classifier, '-b 1');
 
-	local classifier = trainLinearModel(training_data.data, training_data.label, nil, num_epochs, true, true)
+	-- local classifier = trainLinearModel(training_data.data, training_data.label, nil, num_epochs, nil, true, true)
+	local classifier = trainLinearModel(scaleFeatures(training_data.data, 0.1), training_data.label, nil, num_epochs, 0.01, true, true)
 
 	return classifier
 end

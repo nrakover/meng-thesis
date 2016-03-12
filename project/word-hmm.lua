@@ -79,7 +79,7 @@ function Word:extractFeatures( frameIndx, detections )
 	local stacked_features_for_detections = nil 
 
 	-- #################################### WITH VGG ####################################
-	stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double()
+	stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double() * 0.1
 	if #detections == 2 then -- ########################### TEMPORARY ############################
 		stacked_features_for_detections:mul(0.001)
 
@@ -89,7 +89,7 @@ function Word:extractFeatures( frameIndx, detections )
 		local center1 = self:getNormalizedDetectionCenter(frameIndx, detections[1])
 		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center1, 1)
 
-		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double() * 0.001, 1)
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double() * 0.0001, 1)
 
 		local avg_flow_vec2 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[2])
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2, 1)
@@ -105,7 +105,7 @@ function Word:extractFeatures( frameIndx, detections )
 		local horizontal_dist = self:getNormalizedClosestSideDistance( frameIndx, detections[1], detections[2] )
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({horizontal_dist}), 1)
 		-- ########################### TEMPORARY ############################
-		stacked_features_for_detections:mul(10)
+		stacked_features_for_detections:mul(1000)
 	end
 	-- #################################### WITH VGG ####################################
 
