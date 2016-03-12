@@ -1,4 +1,4 @@
-function splitVideo( vid_path, outpath, desired_side )
+function splitVideo( vid_path, outpath, desired_side, fraction )
 
     originalVideo = VideoReader(vid_path);
 
@@ -10,9 +10,9 @@ function splitVideo( vid_path, outpath, desired_side )
         frame_width = size(f, 2);
 
         if desired_side == 'L'
-            half_f = f(:, 1:round(frame_width/2), :);
+            half_f = f(:, 1:round(frame_width * fraction), :);
         elseif desired_side == 'R'
-            half_f = f(:, round(frame_width/2):frame_width, :);
+            half_f = f(:, round(frame_width * (1-fraction)):frame_width, :);
         else
             display('INVALID SIDE')
             return
@@ -22,4 +22,3 @@ function splitVideo( vid_path, outpath, desired_side )
 
     close(outputVideo);
 end
-
