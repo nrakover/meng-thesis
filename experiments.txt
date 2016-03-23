@@ -1029,7 +1029,7 @@ learn_pickup_take56:
 	- AdaGrad
 	- learned transition matrix
 
-learn_pickup_take58:
+learn_pickup_take58:	*** SUCCESS ***
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
@@ -1159,7 +1159,7 @@ learn_approach_take12:	*** FAILURE ***
 	- learned transition matrix
 	- 4-state
 
-learn_approach_take13:
+learn_approach_take13:	*** SUCCESS ***
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
@@ -1185,7 +1185,51 @@ learn_approach_take13:
 
 
 ==========================  LEAVE  ==========================
-learn_leave_take1:
+learn_leave_take1:	*** SUCCESS ***
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.05)
+	- epochs starts at 3 (ends at 8)
+	- Tracker exponent = 80
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.1
+	- non-VGG features scaled by 1000
+	- ALL TRACKS
+	- AdaGrad
+	- learned transition matrix
+	- 4-state
+
+==========================  OPEN  ==========================
+learn_open_take1:	*** FAILURE ***
+	- nouns known
+	- no colors
+	- filter uses temporal coherence
+	- band diagonal transitions
+	- persistent emission models
+	- filter uses forward projection
+	- filter uses non-maximal suppression
+	- fixed learning rate (0.05)
+	- epochs starts at 3 (ends at 8)
+	- Tracker exponent = 80
+	- MATLAB person detector generates person proposals
+	- 10 epochs
+	- features include shortest horizontal distance
+	- VGG features scaled by 0.1
+	- non-VGG features scaled by 1000
+	- ALL TRACKS
+	- AdaGrad
+	- learned transition matrix
+	- 4-state
+
+==========================  CLOSE  ==========================
+learn_close_take1:	*** FAILURE ***
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
