@@ -3,7 +3,6 @@ MVI_0829	person,put_down,backpack
 MVI_0831	person,put_down,trash_bin
 MVI_0832	person,put_down,trash_bin
 MVI_0833	person,put_down,backpack
-MVI_0834	person,put_down,backpack
 MVI_0834	person,put_down,trash_bin
 MVI_0842	person,put_down,backpack
 MVI_0844	person,put_down,backpack
@@ -12,19 +11,15 @@ MVI_0861	person,put_down,backpack
 MVI_0863	person,put_down,trash_bin
 MVI_0864	person,put_down,trash_bin
 MVI_0865	person,put_down,backpack
-MVI_0866	person,put_down,backpack
 MVI_0866	person,put_down,trash_bin
-MVI_0867	person,put_down,backpack
 MVI_0867	person,put_down,trash_bin
 MVI_0876	person,put_down,backpack
 MVI_0878	person,put_down,trash_bin
 MVI_0892	person,put_down,chair
 MVI_0893	person,put_down,backpack
-MVI_0894	person,put_down,backpack
 MVI_0894	person,put_down,chair
 MVI_0895	person,put_down,backpack
 MVI_0896	person,put_down,chair
-MVI_0897	person,put_down,backpack
 MVI_0897	person,put_down,chair
 MVI_0905	person,put_down,backpack
 MVI_0906	person,put_down,backpack

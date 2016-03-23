@@ -52,3 +52,8 @@ MVI_0108	blue person
 MVI_0109	blue person
 MVI_0110	blue person
 MVI_0111	blue person
+MVI_0112	blue person
+MVI_0113	blue person
+MVI_0114	blue person
+MVI_0115	blue person
+MVI_0116	blue person

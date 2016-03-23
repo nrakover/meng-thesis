@@ -11,6 +11,11 @@ MVI_0108	red person
 MVI_0109	red person
 MVI_0110	red person
 MVI_0111	red person
+MVI_0112	red person
+MVI_0113	red person
+MVI_0114	red person
+MVI_0115	red person
+MVI_0116	red person
 MVI_0820	blue trash_bin
 MVI_0820	blue person
 MVI_0821	blue trash_bin

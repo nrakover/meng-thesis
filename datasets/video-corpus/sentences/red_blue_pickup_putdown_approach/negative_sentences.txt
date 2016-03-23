@@ -57,7 +57,6 @@ MVI_0113	blue person
 MVI_0114	blue person
 MVI_0115	blue person
 MVI_0116	blue person
-
 MVI_0854	person,pickup,chair
 MVI_0854	person,pickup,backpack
 MVI_0820	person,pickup,backpack
@@ -129,7 +128,6 @@ MVI_0910	person,pickup,trash_bin
 MVI_0910	person,pickup,person
 MVI_0911	trash_bin,pickup,backpack
 MVI_0912	chair,pickup,person
-
 MVI_0838	person,put_down,chair
 MVI_0839	person,put_down,backpack
 MVI_0841	person,put_down,backpack
@@ -164,7 +162,6 @@ MVI_0836	person,put_down,trash_bin
 MVI_0836	person,put_down,backpack
 MVI_0844	backpack,put_down,person
 MVI_0848	person,put_down,backpack
-
 MVI_0836	person,approach,backpack
 MVI_0836	trash_bin,approach,backpack
 MVI_0849	person,approach,trash_bin
