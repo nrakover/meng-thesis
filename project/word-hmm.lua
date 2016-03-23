@@ -78,16 +78,27 @@ function Word:extractFeatures( frameIndx, detections )
 
 	local stacked_features_for_detections = nil 
 
-	-- #################################### WITH VGG ####################################
-	stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double() * 0.1
-	if #detections == 2 then -- ########################### TEMPORARY ############################
-		stacked_features_for_detections:mul(0.001)
+	-- #################################### WITH VGG ####################################	
+	stacked_features_for_detections = self.detectionFeatures[frameIndx][detections[1]]:clone():double() * 0.0001
+	if #detections == 1 then
+		local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
+		local flow_magnitude = torch.norm(avg_flow_vec)
+		local normalized_flow_vec = nil
+		if flow_magnitude == 0 then
+			normalized_flow_vec = torch.DoubleTensor({0,0})
+		else
+			normalized_flow_vec = avg_flow_vec / flow_magnitude
+		end
 
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, normalized_flow_vec, 1)
+		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({flow_magnitude}), 1)
+
+		stacked_features_for_detections:mul(1000)
+	elseif #detections == 2 then	-- TODO: generalize to n arguments
 		local avg_flow_vec1 = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[1])
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec1, 1)
 
 		local center1 = self:getNormalizedDetectionCenter(frameIndx, detections[1])
-		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center1, 1)
 
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[2]]:clone():double() * 0.0001, 1)
 
@@ -95,16 +106,15 @@ function Word:extractFeatures( frameIndx, detections )
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2, 1)
 
 		local center2 = self:getNormalizedDetectionCenter(frameIndx, detections[2])
-		-- stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2, 1)
 
-		-- ########################### TEMPORARY ############################
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({torch.dist(center2, center1)}), 1)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, center2 - center1, 1)
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec2 - avg_flow_vec1, 1)
 
 		local horizontal_dist = self:getNormalizedClosestSideDistance( frameIndx, detections[1], detections[2] )
 		stacked_features_for_detections = torch.cat(stacked_features_for_detections, torch.DoubleTensor({horizontal_dist}), 1)
-		-- ########################### TEMPORARY ############################
+
+		-- Rescale
 		stacked_features_for_detections:mul(1000)
 	end
 	-- #################################### WITH VGG ####################################
@@ -139,20 +149,6 @@ function Word:extractFeatures( frameIndx, detections )
 	-- 	stacked_features_for_detections:mul(10)
 	-- end
 	-- -- #################################### NO VGG ####################################
-
-	-- for i = 2, #detections do
-	-- 	-- VGG features
-	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, self.detectionFeatures[frameIndx][detections[i]]:clone():double(), 1)
-
-	-- 	-- Average optical flow vector
-	-- 	local avg_flow_vec = self:extractAvgFlowFromDistanceTransform(frameIndx, detections[i])
-	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, avg_flow_vec, 1)
-
-	-- 	-- Detection center, with coordinates normalized to [0,1]
-	-- 	local center = self:getNormalizedDetectionCenter(frameIndx, detections[i])
-	-- 	stacked_features_for_detections = torch.cat(stacked_features_for_detections, center, 1)
-	-- end
-
 	
 	self.featureExtractionMemo[key] = torch.squeeze(stacked_features_for_detections):double()
 	return self.featureExtractionMemo[key]

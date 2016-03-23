@@ -27,7 +27,7 @@ function SentenceTracker:new(sentence, video_detections_path, video_features_pat
 	newObj:processVideo(video_detections_path, video_features_path, video_optflow_path, filter_detections, word_models, words_to_filter_by)
 
 	-- Initialize tracker
-	newObj.tracker = Tracker:new(newObj.detectionsByFrame, newObj.detectionsOptFlow, 40)
+	newObj.tracker = Tracker:new(newObj.detectionsByFrame, newObj.detectionsOptFlow, 80)
 
 	-- Initialize word trackers
 	newObj:buildWordModels(word_models)
@@ -59,10 +59,10 @@ function SentenceTracker:processVideo(video_detections_path, video_features_path
 		for f = 1, self.numFrames do
 			self.detectionIndicesPerRole[f] = {}
 			for r = 1, self.numRoles do
-				self.detectionIndicesPerRole[f][r] = {r}	-- ############################# CHANGE BACK
-				-- for i = 1, #self.detectionsByFrame[f] do
-				-- 	table.insert(self.detectionIndicesPerRole[f][r], i)
-				-- end
+				self.detectionIndicesPerRole[f][r] = {}  --{r}
+				for i = 1, #self.detectionsByFrame[f] do
+					table.insert(self.detectionIndicesPerRole[f][r], i)
+				end
 			end
 		end
 	end
@@ -598,7 +598,7 @@ end
 function SentenceTracker:filterDetections( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, num_desired_proposals_per_role, person_detection_indices )
 	
 	-- Do first pass, overgenerating for each noun using forward-projection, without scoring two-argument words
-	local filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, 5*num_desired_proposals_per_role, true, false, 10, person_detection_indices )
+	local filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by, 2*num_desired_proposals_per_role, true, false, 25, person_detection_indices )
 
 	-- Do second pass, scoring with two-argument words, no forward-projection and narrowing down to the desired number of proposals
 	-- filtered_detections, filtered_features, detection_indices_per_role = self:doSinglePassOfFilteringWithOptions( filtered_detections, filtered_features, optical_flow, word_models, words_to_filter_by, 5*num_desired_proposals_per_role, false, false, 20 )
@@ -638,24 +638,16 @@ function SentenceTracker:doSinglePassOfFilteringWithOptions( all_detections_by_f
 
 		-- Iterate over detections
 		for detIndx = 1, #all_detections_by_frame[fIndx] do
-			local features = torch.squeeze(all_features[fIndx][detIndx]:clone()):double()
+			local features = torch.cat( torch.squeeze(all_features[fIndx][detIndx]:clone()):double(), torch.DoubleTensor({0,0,0}), 1 ) -- pad with optical flow features, which will be ignored
 
 			-- Score the detection with the single-argument word models
 			scores_by_role_per_frame = self:scoreWithStaticWords( fIndx, detIndx, features, scores_by_role_per_frame, word_models, words_to_filter_by )
-
-			-- -- Score the detection with the tracker
-			-- if fIndx > 1 then
-			-- 	scores_by_role_per_frame = self:scoreWithTracker( fIndx, detIndx, scores_by_role_per_frame, tracker, all_detections_by_frame )
-			-- end
 		end
 
 		-- Score with two-argument words
 		if score_with_two_arg_words and fIndx == 1 then
 			scores_by_role_per_frame = self:scoreWithTwoArgumentWords( scores_by_role_per_frame, all_detections_by_frame, all_features, optical_flow, word_models, words_to_filter_by )
 		end
-
-		-- -- Take top K from each role
-		-- filtered_detections, filtered_features, detection_indices_per_role = self:getTopKPerRole( K, fIndx, detection_indices_per_role, filtered_detections, filtered_features, scores_by_role_per_frame, all_detections_by_frame, all_features )
 	end
 
 	-- Score the detection with the tracker
@@ -976,7 +968,7 @@ function SentenceTracker:nonMaximalSuppression( detection_indices_per_role, filt
 end
 
 function SentenceTracker:shouldSuppress( box_a, box_b, threshold )
-	threshold = threshold or 0.25
+	threshold = threshold or 0.5
 
 	local A_x_min = box_a[1]
 	local A_y_min = box_a[2]

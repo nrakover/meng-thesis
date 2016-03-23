@@ -1,7 +1,5 @@
 require 'torch'
 
--- require 'svm';
--- dofile('data-to-svmlight.lua' );
 dofile('train-test-split.lua' );
 dofile('classifiers.lua')
 
@@ -16,24 +14,24 @@ local function scaleFeatures( data, scale_factor )
 	return scaled_data
 end
 
+local function appendOptflow( data )
+	local new_data = {}
+	for i = 1, #data do
+		new_data[i] = torch.cat(data[i]:clone(), torch.FloatTensor({0,0,0}), 1)
+	end
+	return new_data
+end
+
 function getClassifier(dataset, num_epochs)
 	local training_data = torch.load(dataset);
 	
-	-- local train_full = t7ToSvmlight(training_data.data, training_data.label);
-	-- local classifier = liblinear.train(train_full, '-s 0 -q');
-	-- local labels,accuracy,prob = liblinear.predict(train_full, classifier, '-b 1');
+	local classifier = trainLinearModel(appendOptflow(scaleFeatures(training_data.data, 0.1)), training_data.label, nil, num_epochs, 0.01, true, true)
 
-	-- local classifier = trainLinearModel(training_data.data, training_data.label, nil, num_epochs, nil, true, true)
-	local classifier = trainLinearModel(scaleFeatures(training_data.data, 0.1), training_data.label, nil, num_epochs, 0.01, true, true)
+	-- Zero out coefficients for optical flow features
+	classifier:get(1).weight[{{1},{4097,4099}}] = 0
 
 	return classifier
 end
-
--- train, test = getTrainTestSplit(detector_training_data, 0.9);
--- train_d = t7ToSvmlight(train.data, train.label);
--- test_d = t7ToSvmlight(test.data, test.label);
--- classifier = liblinear.train(train_d, '-s 0 -q');
--- labels,accuracy,prob = liblinear.predict(test_d, classifier, '-b 1');
 
 
 -- ##################
@@ -45,9 +43,45 @@ function getPersonDetector()
 		print("Using cached 'person' detector")
 	else
 		print("Training 'person' detector")
-		person_classifier = getClassifier('datasets/video-corpus/object_images/person_dataset.t7', 5)
+		person_classifier = getClassifier('datasets/video-corpus/object_images/person_dataset.t7', 12)
 		-- person_classifier = getClassifier('datasets/VOC2007/person_dataset.t7', 10)
 		torch.save(DETECTORS_PATH..'person.t7', person_classifier)
+	end
+	return {emissions={person_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getPersonBooksVersionDetector()
+	local person_classifier = nil
+	if pcall(function() person_classifier = torch.load(DETECTORS_PATH..'person_books_version.t7') end) then
+		print("Using cached 'person (books version)' detector")
+	else
+		print("Training 'person (books version)' detector")
+		person_classifier = getClassifier('datasets/video-corpus/object_images/person_books_version_dataset.t7', 12)
+		torch.save(DETECTORS_PATH..'person_books_version.t7', person_classifier)
+	end
+	return {emissions={person_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getPersonSkippingVersionDetector()
+	local person_classifier = nil
+	if pcall(function() person_classifier = torch.load(DETECTORS_PATH..'person_skipping_version.t7') end) then
+		print("Using cached 'person (skipping/walking version)' detector")
+	else
+		print("Training 'person (skipping/walking version)' detector")
+		person_classifier = getClassifier('datasets/video-corpus/object_images/person_skipping_version_dataset.t7', 12)
+		torch.save(DETECTORS_PATH..'person_skipping_version.t7', person_classifier)
+	end
+	return {emissions={person_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getPersonOldCorpusVersionDetector()
+	local person_classifier = nil
+	if pcall(function() person_classifier = torch.load(DETECTORS_PATH..'person_old_corpus_version.t7') end) then
+		print("Using cached 'person (old corpus version)' detector")
+	else
+		print("Training 'person (old corpus version)' detector")
+		person_classifier = getClassifier('datasets/video-corpus/object_images/person_old_corpus_version_dataset.t7', 8)
+		torch.save(DETECTORS_PATH..'person_old_corpus_version.t7', person_classifier)
 	end
 	return {emissions={person_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
 end
@@ -100,6 +134,30 @@ function getBackpackDetector()
 		torch.save(DETECTORS_PATH..'backpack.t7', backpack_classifier)
 	end
 	return {emissions={backpack_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getBookDetector()
+	local book_classifier = nil
+	if pcall(function() book_classifier = torch.load(DETECTORS_PATH..'book.t7') end) then
+		print("Using cached 'book' detector")
+	else
+		print("Training 'book' detector")
+		book_classifier = getClassifier('datasets/video-corpus/object_images/book_dataset.t7', 20)
+		torch.save(DETECTORS_PATH..'book.t7', book_classifier)
+	end
+	return {emissions={book_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
+end
+
+function getLampDetector()
+	local lamp_classifier = nil
+	if pcall(function() lamp_classifier = torch.load(DETECTORS_PATH..'lamp.t7') end) then
+		print("Using cached 'lamp' detector")
+	else
+		print("Training 'lamp' detector")
+		lamp_classifier = getClassifier('datasets/video-corpus/object_images/lamp_dataset.t7', 20)
+		torch.save(DETECTORS_PATH..'lamp.t7', lamp_classifier)
+	end
+	return {emissions={lamp_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
 end
 
 
@@ -165,24 +223,6 @@ function getGrayDetector()
 	end
 	return {emissions={gray_classifier}, transitions=torch.ones(1,1), priors=torch.ones(1)}
 end
-
-
--- ##################
--- ##	  VERBS	   ##
--- ##################
--- function getApproachDetector() -- implement
--- 	-- long-range detector
--- 	-- mid-range detector
--- 	-- close-range detector
-
--- 	-- transition probabilities
-
--- 	-- prior distribution
--- end
-
-
-
-
 
 
 

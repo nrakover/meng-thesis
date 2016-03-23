@@ -189,7 +189,7 @@ function WordLearner:MStep( current_word_models, words_to_learn, videos, labels,
 		new_state_transitions[{{new_state_transitions:size(1)},{}}] = torch.zeros(1,new_state_transitions:size(1))
 		new_state_transitions[{{new_state_transitions:size(1)},{new_state_transitions:size(1)}}] = 1
 		
-		-- new_state_transitions = current_word_models[w].transitions
+		-- new_state_transitions = current_word_models[w].transitions  -- Freeze Transition Matrix
 		print(new_state_transitions)
 
 		-- Compute the state priors
