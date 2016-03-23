@@ -128,26 +128,24 @@ initial_word_models['trash_bin'] = getTrashbinDetector()
 initial_word_models['chair'] = getChairDetector()
 initial_word_models['backpack'] = getBackpackDetector()
 initial_word_models['book'] = getBookDetector()
-initial_word_models['lamp'] = getLampDetector()
 
 local words_to_learn = {}
 
 
--- initial_word_models['red'] = initKStateWord(1, 1)
--- table.insert(words_to_learn, 'red')
+initial_word_models['red'] = initKStateWord(1, 1)
+table.insert(words_to_learn, 'red')
+initial_word_models['blue'] = initKStateWord(1, 1)
+table.insert(words_to_learn, 'blue')
+-- initial_word_models['pickup'] = (torch.load('learn_pickup_take58/models_ckpt_10.t7'))['pickup']
 
--- initial_word_models['blue'] = initKStateWord(1, 1)
--- table.insert(words_to_learn, 'blue')
-
--- initial_word_models['pickup'] = initKStateWord(2, 4)
--- table.insert(words_to_learn, 'pickup')
--- initial_word_models['pickup'] = (torch.load('learn_pickup_take55/models_ckpt_10.t7'))['pickup']
+initial_word_models['pickup'] = initKStateWord(2, 4)
+table.insert(words_to_learn, 'pickup')
 
 initial_word_models['put_down'] = initKStateWord(2, 4)
 table.insert(words_to_learn, 'put_down')
 
--- initial_word_models['approach'] = initKStateWord(2, 4)
--- table.insert(words_to_learn, 'approach')
+initial_word_models['approach'] = initKStateWord(2, 4)
+table.insert(words_to_learn, 'approach')
 
 -- initial_word_models['leave'] = initKStateWord(2, 4)
 -- table.insert(words_to_learn, 'leave')
@@ -158,16 +156,27 @@ table.insert(words_to_learn, 'put_down')
 -- initial_word_models['close'] = initKStateWord(2, 4)
 -- table.insert(words_to_learn, 'close')
 
+-- initial_word_models['walking'] = initKStateWord(1, 3)
+-- table.insert(words_to_learn, 'walking')
+
+-- initial_word_models['skipping'] = initKStateWord(1, 3)
+-- table.insert(words_to_learn, 'skipping')
+
+-- initial_word_models['moving'] = initKStateWord(1, 3)
+-- table.insert(words_to_learn, 'moving')
+
+-- initial_word_models['still'] = initKStateWord(1, 3)
+-- table.insert(words_to_learn, 'still')
+
 words_to_filter_by = {}
 words_to_filter_by['person'] = true
 words_to_filter_by['trash_bin'] = true
 words_to_filter_by['chair'] = true
 words_to_filter_by['backpack'] = true
 words_to_filter_by['book'] = true
-words_to_filter_by['lamp'] = true
 
-local positive_sentences, positive_example_names = loadSentences('put_down/positive_sentences.txt')
-local negative_sentences, negative_example_names = loadSentences('put_down/negative_sentences.txt')
+local positive_sentences, positive_example_names = loadSentences('red_blue_pickup_putdown_approach/positive_sentences.txt')
+local negative_sentences, negative_example_names = loadSentences('red_blue_pickup_putdown_approach/negative_sentences.txt')
 local sentences = concatTables(positive_sentences, negative_sentences)
 
 local example_names = concatTables(positive_example_names, negative_example_names)
@@ -175,7 +184,7 @@ local videos = getVideos('/local/nrakover/meng/datasets/video-corpus/single_trac
 local labels = torch.cat(torch.ones(#positive_sentences), -torch.ones(#negative_sentences))
 
 local start_time = os.time()
-local learned_word_models = WordLearner:learnWords( '/local/nrakover/meng/learn_put_down_take1/models', words_to_learn, videos, sentences, labels, initial_word_models, 10, true, words_to_filter_by )
+local learned_word_models = WordLearner:learnWords( '/local/nrakover/meng/learn_red_blue_pickup_putdown_approach_take1/models', words_to_learn, videos, sentences, labels, initial_word_models, 10, true, words_to_filter_by )
 local end_time = os.time()
 
 print('Minutes elapsed: '..((end_time - start_time)/60))
