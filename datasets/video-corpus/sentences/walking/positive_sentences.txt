@@ -1,0 +1,16 @@
+MVI_0301	walking person
+MVI_0302	walking person
+MVI_0305	walking person
+MVI_0306	walking person
+MVI_0311	walking person
+MVI_0312	walking person
+MVI_0315	walking person
+MVI_0316	walking person
+MVI_0321	walking person
+MVI_0322	walking person
+MVI_0325	walking person
+MVI_0326	walking person
+MVI_0331	walking person
+MVI_0332	walking person
+MVI_0335	walking person
+MVI_0336	walking person

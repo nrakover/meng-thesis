@@ -1,7 +1,5 @@
 MVI_0838	person,pickup,chair
 MVI_0839	person,pickup,backpack
-MVI_0840	person,pickup,backpack
-MVI_0840	person,pickup,chair
 MVI_0841	person,pickup,backpack
 MVI_0843	person,pickup,backpack
 MVI_0844	person,pickup,trash_bin
@@ -11,8 +9,6 @@ MVI_0847	person,pickup,backpack
 MVI_0847	person,pickup,chair
 MVI_0871	person,pickup,backpack
 MVI_0872	person,pickup,chair
-MVI_0874	person,pickup,backpack
-MVI_0874	person,pickup,chair
 MVI_0875	person,pickup,backpack
 MVI_0877	person,pickup,trash_bin
 MVI_0878	person,pickup,backpack

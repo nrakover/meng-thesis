@@ -1,0 +1,1 @@
+MVI_0850	person,leave,trash_bin

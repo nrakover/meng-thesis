@@ -1,0 +1,16 @@
+MVI_0303	skipping person
+MVI_0304	skipping person
+MVI_0307	skipping person
+MVI_0308	skipping person
+MVI_0313	skipping person
+MVI_0314	skipping person
+MVI_0317	skipping person
+MVI_0318	skipping person
+MVI_0323	skipping person
+MVI_0324	skipping person
+MVI_0327	skipping person
+MVI_0328	skipping person
+MVI_0333	skipping person
+MVI_0334	skipping person
+MVI_0337	skipping person
+MVI_0338	skipping person

@@ -1,0 +1,1 @@
+MVI_0850	person,approach,trash_bin

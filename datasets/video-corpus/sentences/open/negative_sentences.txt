@@ -1,0 +1,17 @@
+MVI_0203	person,open,book
+MVI_0205	person,open,book
+MVI_0207	person,open,book
+MVI_0209	person,open,book
+MVI_0215	person,open,book
+MVI_0217	person,open,book
+MVI_0219	person,open,book
+MVI_0221	person,open,book
+MVI_0227	person,open,book
+MVI_0229	person,open,book
+MVI_0231	person,open,book
+MVI_0238	person,open,book
+MVI_0239	person,open,book
+MVI_0240	person,open,book
+MVI_0241	person,open,book
+MVI_0242	person,open,book
+MVI_0243	person,open,book

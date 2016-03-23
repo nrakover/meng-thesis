@@ -1,0 +1,4 @@
+MVI_0830	person,put_down,backpack
+MVI_0830	person,put_down,chair
+MVI_0862	person,put_down,backpack
+MVI_0862	person,put_down,chair

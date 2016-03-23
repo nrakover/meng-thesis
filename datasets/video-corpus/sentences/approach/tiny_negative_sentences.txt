@@ -1,0 +1,2 @@
+MVI_0822	black backpack,approach,blue trash_bin
+MVI_0822	blue trash_bin,approach,gray chair

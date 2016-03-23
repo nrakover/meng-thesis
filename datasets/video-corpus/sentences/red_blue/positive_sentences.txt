@@ -1,0 +1,71 @@
+MVI_0101	red person
+MVI_0101	blue trash_bin
+MVI_0102	red person
+MVI_0103	red person
+MVI_0103	blue trash_bin
+MVI_0104	red person
+MVI_0105	red person
+MVI_0106	red person
+MVI_0107	red person
+MVI_0108	red person
+MVI_0109	red person
+MVI_0110	red person
+MVI_0111	red person
+MVI_0820	blue trash_bin
+MVI_0820	blue person
+MVI_0821	blue trash_bin
+MVI_0821	blue person
+MVI_0821	red backpack
+MVI_0822	blue trash_bin
+MVI_0822	blue person
+MVI_0822	red backpack
+MVI_0823	blue trash_bin
+MVI_0825	red backpack
+MVI_0827	red backpack
+MVI_0827	blue trash_bin
+MVI_0828	red backpack
+MVI_0828	blue trash_bin
+MVI_0837	red backpack
+MVI_0837	blue trash_bin
+MVI_0839	blue person
+MVI_0841	blue person
+MVI_0845	blue person
+MVI_0846	blue person
+MVI_0839	blue person,pickup,red backpack
+MVI_0840	blue person,pickup,red backpack
+MVI_0840	red person,pickup,chair
+MVI_0841	blue person,pickup,red backpack
+MVI_0844	red person,pickup,blue trash_bin
+MVI_0845	blue person,pickup,red backpack
+MVI_0846	blue person,pickup,red backpack
+MVI_0847	blue person,pickup,red backpack
+MVI_0847	red person,pickup,chair
+MVI_0871	blue person,pickup,red backpack
+MVI_0872	blue person,pickup,chair
+MVI_0874	blue person,pickup,red backpack
+MVI_0874	red person,pickup,chair
+MVI_0875	blue person,pickup,red backpack
+MVI_0877	red person,pickup,blue trash_bin
+MVI_0878	blue person,pickup,red backpack
+MVI_0879	blue person,pickup,red backpack
+MVI_0881	blue person,pickup,red backpack
+MVI_0881	red person,pickup,chair
+MVI_0902	blue person,pickup,red backpack
+MVI_0903	blue person,pickup,red backpack
+MVI_0903	red person,pickup,chair
+MVI_0904	blue person,pickup,red backpack
+MVI_0907	red person,pickup,chair
+MVI_0908	blue person,pickup,red backpack
+MVI_0909	blue person,pickup,red backpack
+MVI_0910	red person,pickup,chair
+MVI_0910	blue person,pickup,red backpack
+MVI_0911	red person,pickup,chair
+MVI_0911	blue person,pickup,red backpack
+MVI_0912	red person,pickup,chair
+MVI_0912	blue person,pickup,red backpack
+MVI_0101	red person,pickup,blue trash_bin
+MVI_0102	red person,pickup,chair
+MVI_0103	red person,pickup,blue trash_bin
+MVI_0104	red person,pickup,chair
+MVI_0105	red person,pickup,chair
+MVI_0106	red person,pickup,chair

@@ -1,0 +1,4 @@
+MVI_0840	person,pickup,backpack
+MVI_0840	person,pickup,chair
+MVI_0874	person,pickup,backpack
+MVI_0874	person,pickup,chair

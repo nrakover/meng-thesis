@@ -1,0 +1,2 @@
+MVI_0822	gray chair,approach,blue trash_bin
+MVI_0823	gray chair,approach,blue trash_bin

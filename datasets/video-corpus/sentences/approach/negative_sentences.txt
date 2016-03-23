@@ -1,69 +1,20 @@
-MVI_0822	red backpack,approach,blue trash_bin
-MVI_0822	blue trash_bin,approach,gray chair
-MVI_0822	blue person,approach,blue trash_bin
-MVI_0823	blue trash_bin,approach,gray chair
-MVI_0824	red person,approach,blue person
-MVI_0824	blue trash_bin,approach,red person
-MVI_0824	blue trash_bin,approach,red backpack
-MVI_0825	red backpack,approach,blue person
-MVI_0825	red backpack,approach,gray chair
-MVI_0826	gray chair,approach,blue trash_bin
-MVI_0826	gray chair,approach,blue person
-MVI_0826	blue trash_bin,approach,red backpack
-MVI_0827	blue trash_bin,approach,gray chair
-MVI_0827	blue person,approach,gray chair
-MVI_0835	blue person,approach,red backpack
-MVI_0835	red backpack,approach,blue person
-MVI_0836	blue trash_bin,approach,blue person
-MVI_0836	blue person,approach,blue trash_bin
-MVI_0836	blue person,approach,red backpack
-MVI_0836	red backpack,approach,blue trash_bin
-MVI_0837	red person,approach,blue trash_bin
-MVI_0837	gray chair,approach,red person
-MVI_0848	blue trash_bin,approach,gray chair
-MVI_0848	blue person,approach,blue person
-MVI_0848	blue trash_bin,approach,blue trash_bin
-MVI_0848	blue trash_bin,approach,gray chair
-MVI_0850	blue person,approach,blue trash_bin
-MVI_0850	blue person,approach,red person
-MVI_0855	gray chair,approach,blue person
-MVI_0855	blue person,approach,blue person
-MVI_0855	blue person,approach,blue trash_bin
-MVI_0856	gray chair,approach,red person
-MVI_0856	blue trash_bin,approach,gray chair
-MVI_0857	gray chair,approach,blue trash_bin
-MVI_0858	blue trash_bin,approach,blue person
-MVI_0858	blue person,approach,red backpack
-MVI_0859	gray chair,approach,red person
-MVI_0859	blue person,approach,red person
-MVI_0859	red person,approach,blue person
-MVI_0859	blue person,approach,blue trash_bin
-MVI_0868	blue person,approach,gray chair
-MVI_0868	blue trash_bin,approach,blue person
-MVI_0869	blue person,approach,gray chair
-MVI_0869	gray chair,approach,blue person
-MVI_0869	red backpack,approach,blue person
-MVI_0870	red person,approach,gray chair
-MVI_0870	red backpack,approach,blue person
-MVI_0882	gray chair,approach,blue person
-MVI_0882	blue trash_bin,approach,blue person
-MVI_0884	blue backpack,approach,blue trash_bin
-MVI_0884	blue trash_bin,approach,red person
-MVI_0885	red backpack,approach,blue person
-MVI_0885	blue person,approach,gray chair
-MVI_0886	gray chair,approach,gray chair
-MVI_0887	blue trash_bin,approach,red backpack
-MVI_0888	red person,approach,blue trash_bin
-MVI_0889	blue trash_bin,approach,gray chair
-MVI_0890	gray chair,approach,blue trash_bin
-MVI_0890	red backpack,approach,blue trash_bin
-MVI_0891	gray chair,approach,blue trash_bin
-MVI_0898	blue person,approach,red backpack
-MVI_0898	gray chair,approach,blue person
-MVI_0900	gray chair,approach,blue person
-MVI_0900	red backpack,approach,blue person
-MVI_0913	blue person,approach,red backpack
-MVI_0913	blue trash_bin,approach,gray chair
-MVI_0915	red backpack,approach,blue trash_bin
-MVI_0915	blue person,approach,red person
-MVI_0915	blue person,approach,gray chair
+MVI_0836	person,approach,backpack
+MVI_0836	trash_bin,approach,backpack
+MVI_0849	person,approach,trash_bin
+MVI_0849	backpack,approach,trash_bin
+MVI_0869	person,approach,chair
+MVI_0869	trash_bin,approach,chair
+MVI_0883	person,approach,trash_bin
+MVI_0883	backpack,approach,trash_bin
+MVI_0884	backpack,approach,trash_bin
+MVI_0899	person,approach,chair
+MVI_0899	trash_bin,approach,chair
+MVI_0914	person,approach,trash_bin
+MVI_0914	backpack,approach,trash_bin
+MVI_0914	backpack,approach,backpack
+MVI_0914	person,approach,backpack
+MVI_0915	backpack,approach,trash_bin
+MVI_0822	backpack,approach,trash_bin
+MVI_0822	person,approach,backpack
+MVI_0836	person,approach,trash_bin
+MVI_0841	person,approach,trash_bin

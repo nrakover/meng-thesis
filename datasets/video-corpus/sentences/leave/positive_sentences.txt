@@ -1,0 +1,16 @@
+MVI_0836	person,leave,backpack
+MVI_0836	trash_bin,leave,backpack
+MVI_0849	person,leave,trash_bin
+MVI_0849	backpack,leave,trash_bin
+MVI_0869	person,leave,chair
+MVI_0869	trash_bin,leave,chair
+MVI_0883	person,leave,trash_bin
+MVI_0883	backpack,leave,trash_bin
+MVI_0884	person,leave,trash_bin
+MVI_0884	backpack,leave,trash_bin
+MVI_0899	person,leave,chair
+MVI_0899	trash_bin,leave,chair
+MVI_0914	person,leave,trash_bin
+MVI_0914	backpack,leave,trash_bin
+MVI_0915	person,leave,trash_bin
+MVI_0915	backpack,leave,trash_bin

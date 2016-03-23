@@ -1,0 +1,4 @@
+MVI_0850	blue person
+MVI_0850	red person
+MVI_0900	blue person
+MVI_0900	red person
