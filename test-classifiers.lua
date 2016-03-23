@@ -11,10 +11,47 @@ local function scaleFeatures( data, scale_factor )
 	return scaled_data
 end
 
-local function trainAndTest(train_data, test_data, num_epochs, adagrad)
-	local model = trainLinearModel(scaleFeatures(train_data.data, 0.1), train_data.label, nil, num_epochs, 0.01, true, adagrad)
+local function appendRandomOptflow( data, zero_all )
+	local new_data = {}
+	for i = 1, #data do
+		if zero_all then
+			new_data[i] = torch.cat(data[i]:clone(), torch.FloatTensor({0,0,0}), 1)
+		else
+			local flow = (torch.rand(2) - 0.5) * 30
+			local magnitude = torch.norm(flow)
+			local normalized_flow = flow / magnitude
+			new_data[i] = torch.cat(torch.cat(data[i]:clone(), normalized_flow:float(), 1), torch.FloatTensor({magnitude}), 1)
+		end
+	end
+	return new_data
+end
 
-	local acc = scoreTestSet(model, scaleFeatures(test_data.data, 0.1), test_data.label)
+local function trainAndTest(train_data, test_data, num_epochs, adagrad, append_rand_flow)
+	local train_X = nil
+	local test_X = nil
+
+	if append_rand_flow then
+		train_X = scaleFeatures(train_data.data, 0.0001)
+		test_X = scaleFeatures(test_data.data, 0.0001)
+
+		train_X = appendRandomOptflow(train_X, true)
+		test_X = appendRandomOptflow(test_X)
+
+		train_X = scaleFeatures(train_X, 1000)
+		test_X = scaleFeatures(test_X, 1000)
+	else
+		train_X = scaleFeatures(train_data.data, 0.1)
+		test_X = scaleFeatures(test_data.data, 0.1)
+	end
+
+	local model = trainLinearModel(train_X, train_data.label, nil, num_epochs, 0.01, true, adagrad)
+	
+	if append_rand_flow then
+		model:get(1).weight[{{1},{4097,4099}}] = 0
+		print(model:get(1).weight[{{1},{4097,4099}}])
+	end
+
+	local acc = scoreTestSet(model, test_X, test_data.label)
 	print('------------------------------------')
 	print('Test accuracy = '..acc)
 	print('------------------------------------\n')
@@ -22,7 +59,7 @@ end
 
 
 local function testPersonClassifiers()
-	local VOC_person_data = torch.load('datasets/VOC2007/person_dataset.t7')
+	-- local VOC_person_data = torch.load('datasets/VOC2007/person_dataset.t7')
 	local video_corp_person_data = torch.load('datasets/video-corpus/object_images/person_dataset.t7')
 
 	local person_train, person_test = getTrainTestSplit(video_corp_person_data, 0.8)
@@ -32,12 +69,14 @@ local function testPersonClassifiers()
 	print('====          PERSON            ====')
 	print('====================================')
 
-	local epochs = {5}
+	local epochs = {5, 10}
 	for i,n in ipairs(epochs) do
-		print('Video corpus data: '..(n..' epochs'))
-		trainAndTest(person_train, person_test, n)
+		-- print('Video corpus data: '..(n..' epochs'))
+		-- trainAndTest(person_train, person_test, n)
 		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
 		trainAndTest(person_train, person_test, n, true)
+		print('Video corpus data: '..(n..' epochs with appended random flow'))
+		trainAndTest(person_train, person_test, n, true, true)
 	end
 
 	-- print('VOC2007 data: 10 epochs')
@@ -58,12 +97,14 @@ local function testBackpackClassifiers()
 	print('====         BACKPACK           ====')
 	print('====================================')
 
-	local epochs = {3,5}
+	local epochs = {5, 10}
 	for i,n in ipairs(epochs) do
-		print('Video corpus data: '..(n..' epochs'))
-		trainAndTest(backpack_train, backpack_test, n)
+		-- print('Video corpus data: '..(n..' epochs'))
+		-- trainAndTest(backpack_train, backpack_test, n)
 		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
 		trainAndTest(backpack_train, backpack_test, n, true)
+		print('Video corpus data: '..(n..' epochs with appended random flow'))
+		trainAndTest(backpack_train, backpack_test, n, true, true)
 	end
 
 end
@@ -78,12 +119,14 @@ local function testChairClassifiers()
 	print('====           CHAIR            ====')
 	print('====================================')
 
-	local epochs = {3,4,5}
+	local epochs = {5, 10}
 	for i,n in ipairs(epochs) do
-		print('Video corpus data: '..(n..' epochs'))
-		trainAndTest(chair_train, chair_test, n)
+		-- print('Video corpus data: '..(n..' epochs'))
+		-- trainAndTest(chair_train, chair_test, n)
 		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
 		trainAndTest(chair_train, chair_test, n, true)
+		print('Video corpus data: '..(n..' epochs with appended random flow'))
+		trainAndTest(chair_train, chair_test, n, true, true)
 	end	
 end
 
@@ -97,12 +140,14 @@ local function testTrashbinClassifiers()
 	print('====         TRASH_BIN          ====')
 	print('====================================')
 
-	local epochs = {3,5}
+	local epochs = {5, 10}
 	for i,n in ipairs(epochs) do
-		print('Video corpus data: '..(n..' epochs'))
-		trainAndTest(trashbin_train, trashbin_test, n)
+		-- print('Video corpus data: '..(n..' epochs'))
+		-- trainAndTest(trashbin_train, trashbin_test, n)
 		print('Video corpus data: '..(n..' epochs with ADAGRAD'))
 		trainAndTest(trashbin_train, trashbin_test, n, true)
+		print('Video corpus data: '..(n..' epochs with appended random flow'))
+		trainAndTest(trashbin_train, trashbin_test, n, true, true)
 	end
 end
 
@@ -196,10 +241,10 @@ end
 -- testRedClassifiers()
 -- testBlueClassifiers()
 -- testBlackClassifiers()
--- testTrashbinClassifiers()
--- testBackpackClassifiers()
+testTrashbinClassifiers()
+testBackpackClassifiers()
 testChairClassifiers()
--- testPersonClassifiers()
+testPersonClassifiers()
 
 
 

@@ -92,8 +92,8 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath, comput
 		-- Iterate over detections
 		for detIndx = 1,frameDetections:size(1) do
 			-- Get image region
-			local x_min = frameDetections[detIndx][1]
-			local y_min = frameDetections[detIndx][2]
+			local x_min = math.min(w-2, frameDetections[detIndx][1])
+			local y_min = math.min(h-2, frameDetections[detIndx][2])
 			local x_max = math.min(w-1, frameDetections[detIndx][3])
 			local y_max = math.min(h-1, frameDetections[detIndx][4])
 
@@ -102,17 +102,23 @@ function extractFeaturesAndOpticalFlow(detectionsByFrame, video_filepath, comput
 				featuresByFrame[frameIndx][detIndx] = torch.DoubleTensor(4096):fill(0)
 
 			else
-				if y_max == y_min then y_max = y_max + 1 end
-				if x_max == x_min then x_max = x_max + 1 end
+				x_min = math.max(1, x_min)
+				y_min = math.max(1, y_min)
+				if y_max == y_min then y_max = math.min(h-1, y_max + 1) end
+				if x_max == x_min then x_max = math.min(w-1, x_max + 1) end
 
-				-- print(x_min, y_min, x_max, y_max, w, h)
-				-- print(frame:size())
-				local frame_region = image.crop(frame, x_min, y_min, x_max, y_max)
-
-				-- Compute features
-				local frame_region_features = extractFeatures(frame_region, net)
-				-- table.insert(featuresByFrame[frameIndx], frame_region_features:clone())
-				featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
+				local frame_region = nil
+				if pcall( function() frame_region = image.crop(frame, x_min, y_min, x_max, y_max) end ) then
+					-- Compute features
+					local frame_region_features = extractFeatures(frame_region, net)
+					-- table.insert(featuresByFrame[frameIndx], frame_region_features:clone())
+					featuresByFrame[frameIndx][detIndx] = frame_region_features:clone()
+				else
+					print('\nERROR')
+					print(x_min, y_min, x_max, y_max, w, h)
+					print(frame:size())
+					image.crop(frame, x_min, y_min, x_max, y_max) -- KILLS PROCESS
+				end
 			end
 
 			-- Show progress on the current frame

@@ -2,13 +2,15 @@ import os
 
 
 SOURCE_DIR = '20121214-new3-corpus/'
+# SOURCE_DIR = 'new-corpus/'
+# SOURCE_DIR = 'new-corpus3/'
 
 
 def generateDirectoryForEachVideo(source, destination):
 	source_dir_contents = os.listdir(source)
 
 	for filename in source_dir_contents:
-		if filename.endswith('.avi') or filename.endswith('.mov'):
+		if filename.endswith('.mp4') or filename.endswith('.avi') or filename.endswith('.mov'):
 			vid_name = filename[:-4]
 
 			new_dir_path = destination + vid_name

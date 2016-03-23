@@ -2,6 +2,8 @@ import matlab.engine
 import os
 
 SOURCE_DIR = '/local/nrakover/meng/datasets/video-corpus/20121214-new3-corpus/'
+# SOURCE_DIR = '/local/nrakover/meng/datasets/video-corpus/new-corpus/'
+# SOURCE_DIR = '/local/nrakover/meng/datasets/video-corpus/new-corpus3/'
 
 
 def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate, size_downsample_rate, num_proposals):
@@ -15,7 +17,7 @@ def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate,
 
 	source_dir_contents = os.listdir(source_dir)
 	for filename in source_dir_contents:
-		if filename.endswith('.avi') or filename.endswith('.mov'): #filename.endswith('102.avi') or filename.endswith('105.avi'):
+		if filename.endswith('112.avi') or filename.endswith('113.avi') or filename.endswith('114.avi') or filename.endswith('115.avi') or filename.endswith('116.avi'): #filename.endswith('.mp4') or filename.endswith('.avi') or filename.endswith('.mov'):
 			vid_name = filename[:-4]
 			print('Processing ' + vid_name + ':')
 
@@ -34,8 +36,8 @@ def doAllMATLABPreprocessing(source_dir, destination_dir, frame_downsample_rate,
 	eng.quit()
 
 
-# doAllMATLABPreprocessing(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/single_track_videos/', 1, 0.4, 400)
-
+# doAllMATLABPreprocessing(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/single_track_videos/', 0.15, 0.15, 250)
+doAllMATLABPreprocessing(SOURCE_DIR, '/local/nrakover/meng/datasets/video-corpus/single_track_videos/', 1, 0.4, 250)
 
 def retrofitWithPersonDetector(source_dir, destination_dir):
 	eng = matlab.engine.start_matlab()
