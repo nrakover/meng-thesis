@@ -1052,7 +1052,7 @@ learn_pickup_take58:	*** SUCCESS ***
 
 
 ==========================  PUT_DOWN  ==========================
-learn_put_down_take1:
+learn_put_down_take1:	*** FAILURE *** (fails on one of two cases)
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
@@ -1207,7 +1207,7 @@ learn_leave_take1:	*** SUCCESS ***
 	- 4-state
 
 ==========================  OPEN  ==========================
-learn_open_take1:
+learn_open_take1:	*** FAILURE ***
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
@@ -1229,7 +1229,7 @@ learn_open_take1:
 	- 4-state
 
 ==========================  CLOSE  ==========================
-learn_close_take1:
+learn_close_take1:	*** FAILURE ***
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
@@ -1380,7 +1380,7 @@ learn_red_blue_take8:	*** SUCCESS ***
 	- AdaGrad
 	- learned transition matrix
 
-learn_red_blue_take9:
+learn_red_blue_take9:	*** SUCCESS ***
 	- nouns known
 	- no colors
 	- filter uses temporal coherence
